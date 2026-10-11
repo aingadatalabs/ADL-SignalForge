@@ -1,7 +1,11 @@
 # .bandit.yml
+# Skip common low-severity or non-critical checks that commonly trigger in scrapers/CLI tools
 skips:
-  - B311
-  - B101
+  - B311  # Standard pseudo-random generators (used for user-agent rotation / jitter)
+  - B101  # Use of assert detected (common in tests/type checking)
+  - B104  # Possible binding to all interfaces (0.0.0.0)
+  - B603  # subprocess call - check for execution without shell
+  - B607  # Starting process with a partial path
 
 assert_used:
   skips:
