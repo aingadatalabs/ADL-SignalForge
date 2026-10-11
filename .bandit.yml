@@ -1,0 +1,10 @@
+# .bandit.yml
+assert_used:
+  skips: ['*/test_*.py', '*/tests.py']
+
+exclude_dirs:
+  - /test
+  - /tests
+  - /venv
+  - /.venv
+  - /outputs
