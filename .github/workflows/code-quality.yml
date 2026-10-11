@@ -65,8 +65,8 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Bandit - Security Linter"
-          bandit -r -c .bandit.yml scrapling/ -f json -o bandit-report.json
-          bandit -r -c .bandit.yml scrapling/
+          bandit -r -c .bandit.yml SSIP/ -f json -o bandit-report.json
+          bandit -r -c .bandit.yml SSIP/
           echo "::endgroup::"
 
       - name: Run Ruff Linter
@@ -74,7 +74,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Ruff - Linter"
-          ruff check scrapling/ --output-format=github
+          ruff check SSIP/ --output-format=github
           echo "::endgroup::"
 
       - name: Run Ruff Formatter Check
@@ -82,7 +82,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Ruff - Formatter Check"
-          ruff format --check scrapling/ --diff
+          ruff format --check SSIP/ --diff
           echo "::endgroup::"
 
       - name: Run Vermin (Python Version Compatibility)
@@ -90,7 +90,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Vermin - Python 3.10+ Compatibility Check"
-          vermin -t=3.10- --violations --eval-annotations --no-tips scrapling/
+          vermin -t=3.10- --violations --eval-annotations --no-tips SSIP/
           echo "::endgroup::"
 
       - name: Run Mypy (Static Type Checker)
@@ -98,7 +98,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Mypy - Static Type Checker"
-          mypy scrapling/
+          mypy SSIP/
           echo "::endgroup::"
 
       - name: Run Pyright (Static Type Checker)
@@ -106,7 +106,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Pyright - Static Type Checker"
-          pyright scrapling/
+          pyright SSIP/
           echo "::endgroup::"
 
       - name: Check results and create summary
@@ -119,7 +119,7 @@ jobs:
           all_passed=true
 
           # Check Bandit
-          if [ "${{ steps.bandit.outcome }}" == "success" ]; then
+          if [ "${{ steps.bandit.conclusion }}" == "success" ]; then
             echo "✅ **Bandit (Security)**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Bandit (Security)**: Failed" >> $GITHUB_STEP_SUMMARY
@@ -127,7 +127,7 @@ jobs:
           fi
 
           # Check Ruff Linter
-          if [ "${{ steps.ruff-lint.outcome }}" == "success" ]; then
+          if [ "${{ steps.ruff-lint.conclusion }}" == "success" ]; then
             echo "✅ **Ruff Linter**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Ruff Linter**: Failed" >> $GITHUB_STEP_SUMMARY
@@ -135,7 +135,7 @@ jobs:
           fi
 
           # Check Ruff Formatter
-          if [ "${{ steps.ruff-format.outcome }}" == "success" ]; then
+          if [ "${{ steps.ruff-format.conclusion }}" == "success" ]; then
             echo "✅ **Ruff Formatter**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Ruff Formatter**: Failed" >> $GITHUB_STEP_SUMMARY
@@ -143,7 +143,7 @@ jobs:
           fi
 
           # Check Vermin
-          if [ "${{ steps.vermin.outcome }}" == "success" ]; then
+          if [ "${{ steps.vermin.conclusion }}" == "success" ]; then
             echo "✅ **Vermin (Python 3.10+)**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Vermin (Python 3.10+)**: Failed" >> $GITHUB_STEP_SUMMARY
@@ -151,7 +151,7 @@ jobs:
           fi
 
           # Check Mypy
-          if [ "${{ steps.mypy.outcome }}" == "success" ]; then
+          if [ "${{ steps.mypy.conclusion }}" == "success" ]; then
             echo "✅ **Mypy (Type Checker)**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Mypy (Type Checker)**: Failed" >> $GITHUB_STEP_SUMMARY
@@ -159,7 +159,7 @@ jobs:
           fi
 
           # Check Pyright
-          if [ "${{ steps.pyright.outcome }}" == "success" ]; then
+          if [ "${{ steps.pyright.conclusion }}" == "success" ]; then
             echo "✅ **Pyright (Type Checker)**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Pyright (Type Checker)**: Failed" >> $GITHUB_STEP_SUMMARY
@@ -182,7 +182,7 @@ jobs:
           fi
 
       - name: Upload Bandit report
-        if: always() && steps.bandit.outcome != 'skipped'
+        if: always() && steps.bandit.conclusion != 'skipped'
         uses: actions/upload-artifact@v6
         with:
           name: bandit-security-report
