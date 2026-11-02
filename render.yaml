@@ -6,7 +6,7 @@ services:
     name: adl-signalforge-api
     env: python
     region: oregon
-    plan: starter
+    plan: free
     branch: main
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -22,7 +22,7 @@ services:
     name: adl-signalforge-pipeline-cron
     env: python
     region: oregon
-    plan: starter
+    plan: free
     branch: main
     schedule: "0 2 * * *"
     startCommand: |
@@ -41,7 +41,7 @@ services:
     name: adl-signalforge-dispatch-cron
     env: python
     region: oregon
-    plan: starter
+    plan: free
     branch: main
     schedule: "*/5 * * * *"
     startCommand: |
