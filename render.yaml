@@ -22,7 +22,7 @@ services:
     name: adl-signalforge-pipeline-cron
     env: python
     region: oregon
-    plan: free
+    plan: starter
     branch: main
     schedule: "0 2 * * *"
     startCommand: |
@@ -41,7 +41,7 @@ services:
     name: adl-signalforge-dispatch-cron
     env: python
     region: oregon
-    plan: free
+    plan: starter
     branch: main
     schedule: "*/5 * * * *"
     startCommand: |
