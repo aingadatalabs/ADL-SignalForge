@@ -1,7 +1,7 @@
 services:
-  # ============================================================================
+  # =========================================================================
   # 1. FastAPI Control Plane Web Service
-  # ============================================================================
+  # =========================================================================
   - type: web
     name: adl-signalforge-api
     env: python
@@ -11,32 +11,22 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
-    disk:
-      name: signalforge-storage
-      mountPath: /data
-      sizeGB: 10
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.4
-      - key: LOG_LEVEL
-        value: INFO
-      - key: DATABASE_PATH
-        value: /data/signalforge.duckdb
       - key: API_KEY
-        generateValue: true # Automatically generates a secure random token
+        generateValue: true
 
-  # ============================================================================
+  # =========================================================================
   # 2. Pipeline Trigger Cron Job (Scheduled Acquisition & Intelligence)
-  # ============================================================================
+  # =========================================================================
   - type: cron
     name: adl-signalforge-pipeline-cron
     env: python
     region: oregon
     plan: starter
     branch: main
-    schedule: "0 2 * * *" # Runs daily at 02:00 UTC
-    command: >
-      curl -sSf -X POST https://adl-signalforge-api.onrender.com/api/v1/trigger-pipeline 
+    schedule: "0 2 * * *"
+    scheduleCommand: >
+      curl -sSf -X POST https://adl-signalforge-api.onrender.com/api/v1/trigger-pipeline
       -H "X-API-Key: $API_KEY"
     envVars:
       - key: API_KEY
@@ -45,18 +35,18 @@ services:
           name: adl-signalforge-api
           envVarKey: API_KEY
 
-  # ============================================================================
+  # =========================================================================
   # 3. Outbox Dispatch Worker Cron Job (Frequent Batch Cycling)
-  # ============================================================================
+  # =========================================================================
   - type: cron
     name: adl-signalforge-dispatch-cron
     env: python
     region: oregon
     plan: starter
     branch: main
-    schedule: "*/5 * * * *" # Runs every 5 minutes
-    command: >
-      curl -sSf -X POST https://adl-signalforge-api.onrender.com/api/v1/dispatch/process 
+    schedule: "*/5 * * * *"
+    scheduleCommand: >
+      curl -sSf -X POST https://adl-signalforge-api.onrender.com/api/v1/dispatch/process
       -H "X-API-Key: $API_KEY"
     envVars:
       - key: API_KEY
