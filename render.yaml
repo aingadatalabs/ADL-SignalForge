@@ -25,7 +25,7 @@ services:
     plan: starter
     branch: main
     schedule: "0 2 * * *"
-    command: |
+    startCommand: |
       curl -sS -i --retry 3 --retry-delay 5 --max-time 120 -X POST https://adl-signalforge-api.onrender.com/api/v1/trigger-pipeline -H "X-API-Key: $API_KEY" -H "Content-Length: 0"
     envVars:
       - key: API_KEY
@@ -44,7 +44,7 @@ services:
     plan: starter
     branch: main
     schedule: "*/5 * * * *"
-    command: |
+    startCommand: |
       curl -sS -i --retry 2 --retry-delay 2 --max-time 30 -X POST https://adl-signalforge-api.onrender.com/api/v1/dispatch/process -H "X-API-Key: $API_KEY" -H "Content-Length: 0"
     envVars:
       - key: API_KEY
@@ -52,6 +52,3 @@ services:
           type: web
           name: adl-signalforge-api
           envVarKey: API_KEY
-        type: web
-        name: adl-signalforge-api
-        envVarKey: API_KEY
