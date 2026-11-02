@@ -2,231 +2,257 @@
 
 **Company Intelligence & Lead Operations Infrastructure by Ainga Data Labs**
 
-Turn scattered business information into structured, evidence-backed, actionable company intelligence.
+Turn scattered business information into organized, evidence-backed intelligence that teams can actually use.
 
-ADL-SignalForge is an intelligence and data operations platform built by **Ainga Data Labs (ADL)**. It helps businesses discover relevant companies, understand them, enrich their records, evaluate opportunities and deliver usable data into the systems where work happens.
+ADL-SignalForge helps businesses reduce the manual work involved in finding companies, researching them, understanding their relevance, identifying useful contacts and moving that information into their daily operations.
 
-It is being developed for ADL's own commercial operations first, with a reusable architecture that can support agencies, sales teams, research organizations and other businesses with company-data requirements.
+Many businesses still depend on people manually searching websites, copying company details into spreadsheets, checking contact information, comparing records, researching decision-makers and transferring everything into CRMs or other systems.
 
-SignalForge is not simply a web scraper, contact finder or lead list generator. It connects the stages between discovering a business and making its information useful.
+This work is repetitive, difficult to maintain and expensive to repeat whenever the target market changes.
+
+SignalForge brings these activities into a connected intelligence workflow.
+
+Built by **Ainga Data Labs (ADL)**, it is being developed for ADL's own commercial operations first, with the intention of supporting agencies, sales teams, research organizations and businesses that depend on reliable company information.
+
+**We help businesses spend less time collecting and organizing information and more time using it to make decisions and take action.**
 
 ---
 
-## 1. The problem we solve
+## 1. The problem
 
-Businesses make decisions using information scattered across websites, directories, public profiles, company pages, databases and external data providers.
+Finding a business is relatively easy. Understanding it well enough to make a useful business decision takes considerably more work.
 
-That information is often incomplete, inconsistent, duplicated, outdated or difficult to use across different workflows.
+Consider a company trying to build a list of potential customers.
 
-Teams consequently spend time on work such as:
+Someone must:
 
-- Finding companies that match a particular market or customer profile.
-- Collecting information from multiple sources.
-- Identifying the correct company when names and domains differ.
-- Understanding what a company does and whether it fits a defined opportunity.
-- Finding relevant business contacts and checking the quality of available information.
-- Prioritizing records instead of treating every discovery equally.
-- Moving information into CRMs, outbound tools, internal databases and reporting systems.
-- Repeating the same research whenever requirements change.
+- Search for businesses that match the target market.
+- Open individual websites and understand what each company does.
+- Collect company names, websites, locations and business details.
+- Determine whether multiple records refer to the same business.
+- Find relevant people and establish their roles.
+- Check whether available contact information is credible.
+- Research services, technologies and other relevant business signals.
+- Decide which companies deserve attention first.
+- Transfer the information into a spreadsheet, CRM or outreach platform.
+- Repeat the process when information changes or a new market is targeted.
 
-SignalForge brings these activities into a structured workflow.
+The same problem exists beyond sales prospecting.
 
-**The outcome:** more useful company records, clearer qualification decisions, traceable evidence and data that can move into downstream business operations.
+Research teams investigate markets. Agencies identify potential customers. Businesses compare suppliers. Investors research companies. Operations teams maintain business directories. Strategy teams monitor competitors.
 
-## 2. Built for ADL first
+Different activities, but a common problem:
 
-SignalForge has two connected commercial purposes.
+**Useful business information is scattered across different sources, while the work required to collect, verify, organize and maintain it is often manual.**
 
-### ADL's internal intelligence system
+The consequences include:
 
-ADL uses SignalForge to identify businesses that may need its services and products, understand their business models, identify relevant stakeholders and prioritize commercial opportunities.
+- Time spent researching instead of acting.
+- Inconsistent company records.
+- Duplicate businesses and contacts.
+- Incomplete or unreliable information.
+- Poor prioritization.
+- Repeated research costs.
+- Delayed handoffs between teams and software.
+- Limited visibility into where information came from.
 
-ADL's potential offerings include:
+SignalForge is designed to reduce this operational burden.
 
-- Data engineering and automated data pipelines.
+## 2. What ADL-SignalForge does
+
+SignalForge connects the work between discovering a business and making its information useful.
+
+It helps organizations:
+
+1. Find businesses that match a defined requirement.
+2. Collect relevant information from configured sources.
+3. Organize records into consistent company profiles.
+4. Identify duplicate or conflicting company identities.
+5. Enrich profiles with additional business and contact evidence.
+6. Evaluate companies against specific requirements.
+7. Prioritize records for review or action.
+8. Deliver results to external systems and operational workflows.
+9. Track processing, delivery and data quality.
+
+The objective is not to collect the largest possible number of records.
+
+It is to produce information that is relevant, understandable, traceable and useful.
+
+SignalForge is not limited to generating lead lists. Lead generation is one application of a broader company intelligence and data operations system.
+
+## 3. Built for ADL first
+
+ADL uses SignalForge to support its own business development and identify organizations that may benefit from its services.
+
+Ainga Data Labs provides and develops solutions around:
+
+- Data engineering and automated pipelines.
 - Company and market intelligence.
-- Prospect discovery, enrichment and qualification systems.
+- Prospect discovery and enrichment.
 - Backend engineering and API development.
-- Custom data infrastructure and automation.
-- Research and intelligence products.
+- Data infrastructure and automation.
+- Custom research and intelligence products.
 
-The initial go-to-market focus is independent B2B growth, outbound, lead-generation and demand-generation agencies.
+### Initial commercial focus
 
-The immediate commercial objective is to acquire approximately 10 suitable agency clients. This is a business target, not a claim about the number of clients already acquired.
+ADL's first acquisition workflow targets independent B2B agencies, particularly:
 
-### A reusable intelligence solution for other businesses
+- Lead-generation agencies.
+- Cold outreach and outbound sales agencies.
+- Demand-generation businesses.
+- Appointment-setting agencies.
+- Growth and performance marketing agencies with relevant data requirements.
 
-The same underlying capabilities can be configured around another organization's requirements.
+The initial target is approximately 10 suitable agency clients.
 
-For example, an agency may need to identify businesses in a particular industry, extract specific commercial signals, find relevant decision-makers and deliver qualified records to its sales team.
+This is a commercial objective, not an existing customer count.
 
-Another organization may need company monitoring, supplier discovery, market research, competitor intelligence or a continuously refreshed business directory.
+SignalForge helps ADL identify suitable businesses, understand their operations, research relevant stakeholders and prepare evidence-backed commercial opportunities.
 
-The underlying workflow remains reusable. The sources, extraction requirements, qualification rules and delivery formats change according to the customer.
+### Beyond ADL's internal operations
+
+The same foundation can support other organizations with different information requirements.
+
+For example:
+
+- An agency may need a continuously refreshed list of companies matching a particular customer profile.
+- A sales team may need better company and decision-maker research before approaching an account.
+- A research organization may need structured information about businesses in a particular industry.
+- A distributor may need to identify potential suppliers and compare their offerings.
+- A business may need to monitor competitors and changes in a target market.
+
+The business requirement determines what information is collected, how it is evaluated and where the results are delivered.
 
 **One intelligence foundation. Different business requirements. Configurable outputs.**
 
 ---
 
-## 3. How SignalForge works
+## 4. How SignalForge works
 
-SignalForge is designed as a sequence of connected intelligence stages.
+SignalForge follows a connected workflow.
 
 ```text
-                ADL-SIGNALFORGE
-                       |
-              1. DISCOVERY
-                       |
-          Source selection and collection
-                       |
-             2. NORMALIZATION
-                       |
-       Standardize records and company data
-                       |
-          3. ENTITY RESOLUTION
-                       |
-      Resolve company identity and duplicates
-                       |
-              4. ENRICHMENT
-                       |
-    Company, contact, technology and other data
-                       |
-             5. QUALIFICATION
-                       |
-       Evaluate against a defined ICP or policy
-                       |
-                6. TIERING
-                       |
-       Prioritize, review, nurture or archive
-                       |
-               7. DELIVERY
-                       |
-          Downstream systems and consumers
-                       |
-                8. FEEDBACK
-                       |
-       Improve quality, rules and performance
+             BUSINESS REQUIREMENT
+                     |
+                     v
+                 DISCOVERY
+                     |
+                     v
+                NORMALIZATION
+                     |
+                     v
+               ENTITY RESOLUTION
+                     |
+                     v
+                 ENRICHMENT
+                     |
+                     v
+                QUALIFICATION
+                     |
+                     v
+                   TIERING
+                     |
+                     v
+                  PERSISTENCE
+                     |
+                     v
+                  PUBLICATION
+                     |
+                     v
+                   DELIVERY
+                     |
+                     v
+             BUSINESS APPLICATIONS
+                     |
+                     v
+                  FEEDBACK
 ```
 
-Each stage has a defined responsibility and data contract.
+Each stage has a defined responsibility.
 
-A failure in one stage should not silently create a misleading record in another. Incomplete information should remain identifiable as incomplete, rather than being presented as a confirmed fact.
+### 4.1 Discovery
 
-### 3.1 Discovery and source collection
+Find businesses and collect information from configured sources.
 
-Discover businesses and retrieve relevant information from configured sources.
-
-Potential source categories include:
+Potential sources include:
 
 - Company websites.
 - Public business directories.
-- Industry and professional directories.
-- Search results and relevant publications.
-- Public company and professional profiles.
+- Industry directories.
+- Search results and publications.
+- Public professional profiles.
 - Customer-provided datasets.
 - Authorized third-party data providers.
-- Other sources justified by a specific business requirement.
 
-Collection is configured according to the target market and the information required.
+Collection depends on the business requirement.
 
-The ingestion layer is deliberately separated from business logic. SignalForge should be able to work through source-specific adapters without making the entire application dependent on one retrieval technology.
+A company research workflow and an agency prospecting workflow do not necessarily need the same information.
 
-### 3.2 Normalization
+### 4.2 Normalization
 
-Convert discovered records into consistent internal representations.
+Information collected from different sources rarely arrives in the same format.
 
-Normalization includes:
+Normalization organizes it into consistent records.
 
-- Standardizing company names and domains.
+This includes:
+
+- Standardizing company names.
 - Validating and canonicalizing URLs.
+- Normalizing domains.
 - Handling missing or malformed fields.
-- Maintaining stable company identifiers.
-- Preserving discovery-source information.
-- Distinguishing unresolved records from valid company records.
+- Preserving original source references.
+- Assigning stable internal identifiers.
 
-The objective is to establish a consistent foundation before more expensive enrichment and qualification work takes place.
+This reduces the manual work of cleaning spreadsheets and comparing inconsistent records.
 
-### 3.3 Entity resolution
+### 4.3 Entity resolution
 
-Determine whether different records represent the same company.
+Different sources may describe the same company using different names, URLs or identifiers.
 
-A company may appear under different names, URLs, subdomains or source-specific identifiers. Entity resolution helps consolidate these observations without discarding their original evidence.
+SignalForge identifies whether records represent the same business.
 
-The identity layer should:
+It uses available identity evidence, compares company names and domains, identifies potential duplicates and preserves conflicting observations for review.
 
-- Compare normalized company names and domains.
-- Use deterministic identity signals where possible.
-- Apply similarity matching cautiously.
-- Preserve conflicting observations.
-- Retain source references and resolution decisions.
-- Avoid merging companies solely because their names look similar.
-- Support unresolved identities for further review.
+The objective is to avoid counting one business several times or incorrectly merging unrelated businesses.
 
-Identity resolution is especially important when records come from multiple discovery sources.
+### 4.4 Enrichment
 
-### 3.4 Enrichment
+A company name and website are rarely enough to understand an opportunity.
 
-Build a richer picture of each company using available source material and configured providers.
+Enrichment adds relevant information from available company material and configured providers.
 
-The enrichment layer is organized around four responsibilities:
+Depending on the workflow, this can include:
 
-| Component | Responsibility |
-|---|---|
-| Crawler | Retrieve relevant company pages and record fetch outcomes |
-| Extractor | Identify structured company, contact, social and technology evidence |
-| Verifier | Validate contact syntax and domain mail-routing information |
-| Orchestrator | Coordinate the stages and assemble the enrichment result |
-
-The shared enrichment contracts include:
-
-- `NormalizedCandidate`
-- `CrawledPage`
-- `CrawlResult`
-- `ContactEvidence`
-- `SocialProfileEvidence`
-- `TechnologyEvidence`
-- `DecisionMaker`
-- `AgencyEnrichmentProfile`
-- `EmailCandidate`
-- `VerificationReport`
-
-Enrichment may include:
-
-- Company descriptions and business activities.
-- Products, services and commercial categories.
-- Relevant website pages and source references.
+- Business descriptions.
+- Products and services.
+- Industry and market information.
+- Relevant website pages.
 - Decision-makers and professional roles.
-- Publicly observed corporate contact details.
+- Public business contact information.
 - Social and professional profiles.
-- Technology-stack evidence.
-- Other ICP-specific attributes.
+- Technology observations.
+- Other market-specific signals.
 
-Contact information must retain its evidence level. An observed email, a generated email permutation and a domain with mail-routing records are different things. MX records do not establish that a particular mailbox exists or belongs to the proposed decision-maker.
+The enrichment process distinguishes observed information from generated or inferred information.
 
-External providers may supplement available evidence, but provider results must retain their source and verification status.
+For example, an email address discovered on a company website is different from a generated email permutation. A domain's mail-routing configuration does not prove that an individual mailbox exists.
 
-### 3.5 Qualification
+Every important observation should retain its source and evidence status.
 
-Evaluate a company against a specific Ideal Customer Profile (ICP), business policy or research requirement.
+### 4.5 Qualification
 
-Qualification is not a universal judgment about whether a company is good or bad. A business may be suitable for one ICP and irrelevant to another.
+Not every discovered business is relevant to every requirement.
 
-The qualification system is being organized into four responsibilities:
+SignalForge evaluates records against a defined Ideal Customer Profile (ICP), business rule or research policy.
 
-| Module | Responsibility |
-|---|---|
-| `rules.py` | Apply deterministic eligibility and exclusion rules |
-| `scorer.py` | Calculate explainable fit and signal scores |
-| `tierer.py` | Assign a priority and routing outcome |
-| `orchestrator.py` | Coordinate evaluation and produce a structured result |
+For ADL's initial agency workflow, qualification considers:
 
-The initial scoring design considers:
+- Whether the company actually provides relevant B2B services.
+- Whether its business model aligns with ADL's offering.
+- Whether its operations suggest relevant data requirements.
+- Whether useful company and stakeholder evidence is available.
 
-1. Business or ICP fit.
-2. Technology alignment.
-3. Available intent-related signals.
-
-The initial weighting model is:
+The initial scoring model considers business fit, technology alignment and intent-related signals:
 
 ```text
 Composite Score =
@@ -235,279 +261,271 @@ Composite Score =
   + (0.30 × Intent Signal)
 ```
 
-This is a starting policy, not a universal scoring formula. The weights and signals must be validated against real qualification outcomes.
+This is an initial configurable model, not a universal buying-intent measurement.
 
-A high score does not prove that a company intends to buy. Technology presence does not automatically indicate a need, and missing information should not automatically count as negative evidence.
+A high score does not prove purchase intent. Missing information should not automatically count as negative evidence.
 
-Qualification decisions should be explainable through:
+Qualification results should explain why a company received its score and retain supporting evidence.
 
-- Matched and missing signals.
-- Supporting source evidence.
-- Rule outcomes and reason codes.
-- Score breakdowns.
-- Confidence and evidence quality.
-- ICP and policy version.
-- Evaluation timestamps.
+### 4.6 Tiering and routing
 
-### 3.6 Tiering and routing
+Once evaluated, records receive a processing priority.
 
-After qualification, records are assigned an appropriate processing route.
-
-The initial routing policy is:
-
-| Outcome | Initial policy | Intended handling |
+| Classification | Initial policy | Intended action |
 |---|---|---|
-| Tier 1 — Hot | Score ≥ 80 and sufficient evidence | Priority review and potential alerting |
-| Tier 2 — Nurture | Score 50–79 | Structured storage and follow-up |
-| Low fit | Score below 50 | Archive or retain for analysis |
-| Pending | Incomplete identity or enrichment | Enrichment-pending queue |
-| Manual review | Conflicting or insufficient evidence | Human assessment |
-| Disqualified | Confirmed exclusion rule | Record reason and archive |
+| Tier 1 — Hot | Score ≥ 80 with sufficient evidence | Priority review |
+| Tier 2 — Nurture | Score 50–79 | Follow-up and monitoring |
+| Low fit | Score below 50 | Retain or archive |
+| Pending | Incomplete information | Further enrichment |
+| Manual review | Conflicting evidence | Human assessment |
+| Disqualified | Confirmed exclusion | Record reason and exclude |
 
-Thresholds are configurable and must be validated against actual data.
+Thresholds are configurable and subject to validation.
 
-A low score is not necessarily a hard disqualification. A company that lacks enough evidence should not be treated as a company that has been proven unsuitable.
-
-Tiering determines what should happen next. It should not be responsible for directly sending messages, triggering external side effects or hiding failed evaluations.
+Tiering determines what should happen next. It does not automatically mean a person should receive an email or message.
 
 ---
 
-## 4. One intelligence engine, multiple downstream consumers
+## 5. From company intelligence to business operations
 
-SignalForge should not produce information that is useful only inside its own pipeline.
+Collecting information is only part of the job.
 
-Its output should be structured so that different teams and applications can consume the same intelligence for different purposes.
+The information must reach the people and applications that use it.
 
-The delivery layer is therefore a core part of the product architecture.
+SignalForge is being designed around multiple downstream consumers.
 
-### 4.1 CRM and sales operations
+### CRM and sales systems
 
-Deliver structured company and contact records into systems used by sales teams.
+Structured company information can support:
 
-Potential uses:
+- Company and contact records.
+- Account segmentation.
+- Qualification history.
+- Account research.
+- Sales preparation.
+- Information synchronization.
 
-- Creating company and contact records.
-- Updating existing company information.
-- Segmenting accounts by ICP and qualification tier.
-- Tracking discovery and qualification history.
-- Supporting account research and sales preparation.
+Potential integrations include HubSpot, Salesforce and other CRM platforms.
 
-Possible destinations include HubSpot, Salesforce and other CRM platforms, subject to the required integration.
+### Prospecting and outbound systems
 
-### 4.2 Outbound and prospecting platforms
+Relevant records can be prepared for human-reviewed prospecting workflows.
 
-Provide relevant records to outbound workflows where the business has an appropriate basis to contact them.
+Potential uses include:
 
-Potential uses:
+- Industry-specific prospect lists.
+- Company and stakeholder research.
+- Campaign segmentation.
+- Contact evidence.
+- Suppression and exclusion handling.
 
-- Segmenting records by industry, company size or service category.
-- Supplying researched company and contact attributes.
-- Preparing records for human-approved outreach.
-- Supporting campaign-specific prospect lists.
-- Excluding suppressed or unsuitable records.
+Potential destinations include Apollo, Instantly, Smartlead, Clay and other outbound platforms.
 
-Possible destinations include Apollo, Instantly, Smartlead, Lemlist and other tools where integration is justified.
+SignalForge prepares intelligence. It does not assume that every qualified business should automatically be contacted.
 
-SignalForge prepares and structures intelligence. It does not assume that every qualified record should automatically receive an email or message.
+### Research and business intelligence
 
-### 4.3 Research and business intelligence
+Structured outputs can support:
 
-Turn collected records into research assets.
+- Market research.
+- Industry directories.
+- Competitor monitoring.
+- Supplier discovery.
+- Company comparisons.
+- Technology research.
+- Commercial opportunity analysis.
 
-Potential uses:
+### APIs and external applications
 
-- Market and industry directories.
-- Company research briefs.
-- Competitor and market monitoring.
-- Technology adoption research.
-- Company segmentation.
-- Industry-specific datasets.
-- Evidence-backed opportunity analysis.
+Selected information can be exposed through authenticated APIs.
 
-This allows SignalForge to serve organizations whose requirements go beyond traditional sales prospecting.
-
-### 4.4 APIs and application integrations
-
-Expose selected company and qualification data to other software.
-
-Potential uses:
+Potential applications include:
 
 - Company lookup.
-- ICP-based search.
-- Filtered prospect retrieval.
-- Enrichment requests.
+- Filtered company retrieval.
 - Qualification results.
-- Data synchronization.
-- Internal application integrations.
+- Enrichment requests.
+- Dataset access.
+- CRM synchronization.
+- Customer dashboards.
 
-API availability, authentication, tenancy and usage limits must be implemented before an endpoint is treated as a production service.
+Access controls and customer data boundaries must be implemented before these become production customer-facing services.
 
-### 4.5 Data warehouses and analytical systems
+### Alerts and notifications
 
-Persist structured outputs for analysis and reporting.
-
-Potential storage and consumption formats include:
-
-- DuckDB for analytical querying.
-- JSONL for structured record exchange.
-- Parquet for analytical datasets.
-- CSV for spreadsheet-based workflows.
-- Relational databases for operational records.
-- Data warehouses where customer requirements justify them.
-
-These formats are not interchangeable. The chosen output should reflect the consumer's actual needs, data volume and update requirements.
-
-### 4.6 Alerts, queues and event-driven workflows
-
-Send important qualification events to downstream services.
+Important events can be delivered to external systems or human operators.
 
 Examples include:
 
 - A newly qualified high-priority company.
-- A company requiring identity resolution.
-- An enrichment process that needs review.
-- A record whose evidence has changed.
-- A completed data delivery.
-- A failed stage requiring operational attention.
+- An enrichment failure requiring review.
+- A completed pipeline execution.
+- An important change in company information.
+- A failed external delivery.
 
-Potential mechanisms include webhooks, background workers, notification services and internal review queues.
-
-The architecture should separate the decision to emit an event from the delivery mechanism that processes it.
-
-### 4.7 Human review and customer delivery
-
-Not every intelligence decision should be automated.
-
-SignalForge should support reviewable records and customer-ready deliverables, including:
-
-- Qualified company lists.
-- Enrichment reports.
-- Decision-maker research.
-- Company profiles.
-- Opportunity summaries.
-- Data exports.
-- Client-specific datasets.
-
-Human review remains important where the evidence is incomplete, the decision has commercial consequences or the quality of a contact needs confirmation.
+This separates the creation of useful intelligence from the operational work of delivering it.
 
 ---
 
-## 5. ADL acquisition pipeline
+## 6. ADL-SignalForge delivery infrastructure
 
-The `ADL/` workflow is the first business implementation of SignalForge.
+The delivery architecture is being developed around three responsibilities.
 
-Its immediate focus is independent B2B agencies that may benefit from better data infrastructure and company intelligence.
+**1. API control plane**
 
-### Initial agency profile
+The FastAPI application provides a controlled interface for monitoring and initiating pipeline and dispatch operations.
 
-The target profile includes:
+Planned endpoints:
 
-- Independent B2B growth and lead-generation agencies.
-- Cold outreach and outbound sales agencies.
-- Demand-generation and appointment-setting businesses.
-- Performance marketing agencies with relevant data requirements.
-- Approximately 2–50 employees as the initial target range.
-- Retainer-based commercial models, with an initial target of approximately $2,000–$10,000+ per month per client.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/healthz` | Service health |
+| GET | `/readyz` | Dependency readiness |
+| POST | `/api/v1/trigger-pipeline` | Pipeline execution trigger |
+| GET | `/api/v1/runs/{run_id}` | Run status |
+| POST | `/api/v1/dispatch/process` | Outbox processing |
+| GET | `/api/v1/dispatch/status` | Dispatch status |
 
-These are target-profile characteristics, not proof that every matching business is ready to purchase ADL's services.
+Pipeline control endpoints require authentication using environment-managed API credentials.
 
-### Agency qualification signals
+**2. Scheduled execution**
 
-**Strong fit signals**
+The intended hosting environment is Render.
 
-- Explicit B2B lead-generation services.
-- Cold outreach or outbound sales services.
-- Demand generation and appointment setting.
-- Clearly identifiable business customers.
-- A repeatable customer acquisition workflow.
+Scheduled execution will allow ADL to run configured intelligence and delivery operations without depending on a developer's local computer.
 
-**Additional technology signals**
+The initial scheduling model uses controlled API-triggered batches.
 
-- Apollo.
-- Instantly.
-- Smartlead.
-- Clay.
-- Lemlist.
-- GoHighLevel.
-- HubSpot.
-- Salesforce.
+The current DuckDB storage design requires particular care around concurrent writers. Execution ownership and scheduling must preserve database consistency.
 
-These tools can help explain an agency's operating environment. Their presence or absence should not independently determine qualification.
+**3. Durable delivery**
 
-**Additional commercial evidence**
+SignalForge uses an outbox-oriented architecture to separate business events from external delivery.
 
-- Clear service offerings.
-- Active business website.
-- Identifiable company leadership.
-- Evidence of multiple customer segments.
-- Publicly observable operational complexity.
-- A credible reason ADL's infrastructure could be useful.
-
-General digital marketing, SEO, PPC and performance agencies may enter a nurture category where their fit is less explicit.
-
-Aggregators, review portals, job boards, media publications and non-agency businesses should be excluded when they are confirmed to fall outside the target profile.
-
-### ADL acquisition workflow
+The intended lifecycle is:
 
 ```text
-Agency discovery
-      |
-Candidate normalization
-      |
-Company identity resolution
-      |
-Website and business enrichment
-      |
-Agency qualification
-      |
-Decision-maker research
-      |
-Contact evidence and verification
-      |
-Priority assignment
-      |
-Research-backed outreach preparation
-      |
-Human review and engagement
-      |
-Commercial outcome tracking
+Intelligence generated
+        |
+        v
+Event persisted
+        |
+        v
+Delivery created
+        |
+        v
+Worker claims delivery
+        |
+        +------------------+
+        |                  |
+        v                  v
+     Webhook            Alert
+        |                  |
+        v                  v
+ CRM / Dashboard     WhatsApp / Email
+        |                  |
+        +--------+---------+
+                 |
+                 v
+          Outcome recorded
+                 |
+          +------+------+
+          |             |
+          v             v
+       Delivered     Retry / Review
 ```
 
-The objective is not to maximize the number of agencies collected. It is to identify and convert suitable businesses into paying ADL clients.
+Each delivery has its own outcome.
+
+A successful webhook should not be repeated simply because a separate email or WhatsApp delivery failed.
+
+The delivery subsystem is being designed to support:
+
+- Safe event claiming.
+- Independent destination tracking.
+- Signed webhook payloads.
+- Bounded processing batches.
+- Retry scheduling.
+- Exponential backoff.
+- Idempotency protection.
+- Failed-delivery handling.
+- Operational logging.
+
+Delivery guarantees must account for external provider behavior and process failures. The intended model is recoverable at-least-once delivery with deduplication, rather than an unsupported promise of exactly-once delivery.
 
 ---
 
-## 6. Multi-ICP and multi-client direction
+## 7. Multi-client and multi-ICP direction
 
-SignalForge is designed to support more than one market or customer profile.
+SignalForge is not being designed around one fixed company profile.
 
-An ICP defines what kind of company a particular workflow is trying to identify and understand.
+Different organizations have different requirements.
 
-An agency serving supplement brands may need different data from an agency serving SaaS businesses. A research organization may require a different set of fields altogether.
+A B2B agency targeting supplement brands needs different information from one targeting SaaS companies. A supplier research workflow needs different qualification rules from an outbound sales workflow.
 
-Each client workflow should therefore be configurable around:
+Each customer configuration should define:
 
-- ICP identifier and description.
-- Inclusion and exclusion criteria.
+- ICP and business requirements.
 - Discovery sources.
 - Required company attributes.
-- Extraction requirements.
-- Qualification rules and score weights.
-- Contact and enrichment requirements.
+- Enrichment requirements.
+- Qualification and exclusion rules.
+- Scoring weights.
 - Data freshness expectations.
-- Output schema and delivery method.
-- Execution limits and collection policies.
+- Output formats.
+- Delivery destinations.
 
-### Initial operating model
+The initial commercial planning model allows up to five ICP configurations per agency.
 
-- ADL's own acquisition workflow remains separate.
-- The first external agency implementations will be based on actual customer requirements.
-- Each agency may have up to five ICP configurations in the initial model.
-- Common functionality should be extracted into shared components when repeated requirements justify it.
+With an initial target of 10 agency customers, that represents a potential 50 ICP configurations.
 
-The initial target of approximately 10 agency clients creates a potential capacity of 50 ICP configurations if every agency uses all five. This is a planning constraint, not an existing production capacity claim.
+This is a planning objective, not a statement of current production capacity.
 
-### Illustrative client structure
+Customer data, execution permissions and outputs must remain appropriately separated.
+
+---
+
+## 8. Data quality and traceability
+
+A company record should be useful to another person or system without requiring them to repeat the original research.
+
+SignalForge is designed to preserve:
+
+| Information | Purpose |
+|---|---|
+| Company identity | Identify the business consistently |
+| Canonical domain | Connect observations to the company |
+| Source records | Establish where information originated |
+| Company signals | Describe relevant business observations |
+| Contact evidence | Preserve stakeholder and contact information |
+| Technology signals | Record observed technologies |
+| Enrichment status | Show what information was obtained |
+| Qualification result | Explain why the company was evaluated a certain way |
+| Tier | Determine processing priority |
+| Collection timestamp | Establish when information was observed |
+| Update timestamp | Track changes |
+| Provenance | Support verification and investigation |
+
+The engineering principles are straightforward:
+
+1. Preserve original evidence.
+2. Distinguish missing information from failed retrieval.
+3. Distinguish observed facts from inferred information.
+4. Avoid unsupported contact verification claims.
+5. Keep identity decisions explainable.
+6. Preserve conflicting information.
+7. Track data freshness.
+8. Validate records before downstream delivery.
+
+**The value is not just having company information. It is knowing what the information means, where it came from and whether it can be trusted.**
+
+---
+
+## 9. Current engineering foundation
+
+ADL-SignalForge is being developed as a modular Python application with clear responsibilities across discovery, processing, persistence and delivery.
+
+The repository currently includes the following areas:
 
 ```text
 ADL-SignalForge/
@@ -515,343 +533,172 @@ ADL-SignalForge/
 ├── ADL/
 │   └── Internal acquisition workflow
 │
-├── clients/
-│   ├── agency_01/
-│   │   ├── config/
-│   │   ├── discovery/
-│   │   ├── extraction/
-│   │   ├── qualification/
-│   │   ├── delivery/
-│   │   └── tests/
-│   │
-│   └── agency_02/
-│       └── ...
+├── dispatch/
+│   ├── outbox.py
+│   ├── webhook_client.py
+│   └── notifier.py
 │
-├── shared/
-│   ├── schemas/
-│   ├── discovery/
-│   ├── normalization/
-│   ├── identity/
-│   ├── enrichment/
-│   ├── qualification/
-│   ├── routing/
-│   └── delivery/
+├── storage/
+│   ├── models/
+│   ├── duckdb_client.py
+│   ├── jsonl_store.py
+│   ├── parquet_sink.py
+│   ├── pipeline_runner.py
+│   └── repository.py
 │
-├── tests/
-├── README.md
-└── ...
+├── scripts/
+│   └── worker.py
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── main.py
+├── requirements.txt
+├── render.yaml
+├── test_signalforge.py
+└── README.md
 ```
 
-This is a target architectural illustration, not a claim that every directory or component currently exists.
+This illustrates the current working repository structure, not a claim that all components are production-ready.
 
-Client data boundaries, configuration and access permissions must be enforced as implementations mature.
+### Persistence and execution
 
----
+The persistence layer is responsible for storing operational events, managing analytical data and providing controlled repository access.
 
-## 7. Data contracts and quality
+Current engineering work includes:
 
-SignalForge depends on structured records that can be understood by downstream systems without repeatedly interpreting raw source material.
+- JSONL event persistence.
+- DuckDB database access.
+- Parquet dataset output.
+- Repository-level persistence operations.
+- Pipeline execution lifecycle management.
+- Shared pipeline data contracts.
+- Provenance and record accounting.
 
-A future unified delivery contract should support fields such as:
+### Enrichment and qualification
 
-| Field | Purpose |
-|---|---|
-| `company_id` | Stable internal company identifier |
-| `company_name` | Normalized business name |
-| `canonical_domain` | Canonical company domain |
-| `website` | Company website |
-| `client_id` | Customer or internal tenant |
-| `icp_id` | Qualification profile used |
-| `source_records` | Original discovery and source references |
-| `company_signals` | Structured company observations |
-| `contacts` | Contact evidence and associated people |
-| `technology_signals` | Observed technology evidence |
-| `enrichment_status` | Enrichment lifecycle outcome |
-| `qualification` | Rule outcomes and scoring details |
-| `tier` | Priority or routing classification |
-| `record_status` | Current processing or delivery state |
-| `collected_at` | Collection timestamp |
-| `updated_at` | Last record update |
-| `evidence` | Supporting sources and observations |
+The wider application is being developed around reusable enrichment contracts, company identity resolution and configurable qualification.
 
-This is a proposed downstream contract. It should not be confused with the individual Pydantic models already reviewed in the enrichment layer.
+The initial qualification design separates deterministic rules, scoring, tiering and orchestration.
 
-### Data quality principles
+### Delivery and notifications
 
-1. Preserve source provenance.
-2. Distinguish missing information from unsuccessful retrieval.
-3. Distinguish observed information from inferred information.
-4. Never present generated contact details as observed facts.
-5. Keep identity resolution explainable.
-6. Preserve conflicting evidence rather than silently overwriting it.
-7. Avoid duplicate companies and contacts.
-8. Track timestamps and freshness.
-9. Validate outputs against explicit schemas.
-10. Keep customer-specific information appropriately separated.
+The dispatch layer separates outbox management, webhook communication and notification providers.
 
-**A record should carry enough context for another system or person to understand where it came from, what is known about it and how it was evaluated.**
+The intended adapters include:
 
----
+- External webhooks for dashboards and CRMs.
+- WhatsApp notifications for important operational alerts.
+- Resend email notifications.
 
-## 8. External services and integrations
+### API and deployment
 
-SignalForge may use external providers when they offer a clear benefit to a particular workflow.
+The API entrypoint is prepared for authenticated execution and Render deployment.
 
-Each integration should have a defined responsibility, explicit configuration and an observable failure boundary.
+The intended operating model includes scheduled pipeline triggers, bounded dispatch operations and health monitoring.
 
-| Service or technology | Potential responsibility |
-|---|---|
-| Scrapling or another retrieval adapter | Website collection and extraction support where appropriate |
-| Oxylabs | Proxy infrastructure for authorized collection workflows |
-| Hunter.io | Professional contact discovery and enrichment |
-| External enrichment APIs | Supplementary company or contact information |
-| OpenRouter | LLM-assisted structured extraction where configured |
-| httpx | HTTP communication for application services |
-| BeautifulSoup | HTML parsing and extraction |
-| Pydantic | Data validation and structured contracts |
-| DuckDB | Analytical storage and querying |
-| JSONL / Parquet | Structured data exchange and analytical delivery |
+### Testing and code quality
 
-The presence of a provider in this table does not mean every SignalForge pipeline uses it or that its integration is production-ready.
+A GitHub Actions workflow has been added to the working repository.
 
-Provider usage should be configured per workflow.
+The visible workflow configuration includes:
 
-All integrations should account for:
+- Python 3.11 environment setup.
+- Dependency installation.
+- Ruff code-quality checks.
+- Application and worker import checks.
+- Conditional pytest execution.
 
-- Authentication and secret management.
-- Request timeouts.
-- Rate limits and quotas.
-- Controlled retries.
-- Explicit error states.
-- Provider-specific provenance.
-- Cost monitoring.
-- Data protection and applicable usage restrictions.
-
-LLM-assisted extraction must validate structured output and preserve the original evidence. An LLM response should not independently establish that a company, person, contact or buying signal exists.
+Test discovery and lint enforcement still require alignment and verification.
 
 ---
 
-## 9. Reliability and orchestration
+## 10. Current development status
 
-A dependable intelligence system must account for incomplete data, external service failures, duplicate execution and partial pipeline completion.
+SignalForge is under active development.
 
-The orchestration layer should coordinate stages without hiding their outcomes.
-
-### Required operating behavior
-
-- Validate input identity and required fields.
-- Record stage-level execution outcomes.
-- Preserve partial results when a later stage fails.
-- Distinguish disqualification from processing failure.
-- Distinguish pending enrichment from manual review.
-- Bound concurrent work.
-- Avoid blocking asynchronous execution unnecessarily.
-- Return structured batch outcomes rather than silently dropping failures.
-- Support safe retries and duplicate prevention.
-- Preserve evaluation history and configuration versions.
-
-### Qualification lifecycle
-
-```text
-RECEIVED
-   |
-VALIDATING
-   |
-RULE EVALUATION
-   |
-   +-------------------+
-   |         |         |
-Eligible  Pending  Disqualified
-   |         |         |
-Scoring   Review    Archive
-   |
-Tier assignment
-   |
-Persist result
-   |
-Prepare delivery event
-   |
-Downstream dispatch
-```
-
-Processing failures must have their own lifecycle. A timeout, invalid response or unexpected exception is not evidence that a company is unsuitable.
-
-Longer-term reliability will require persistent evaluation records, idempotency keys, retryable delivery and an outbox-style mechanism for coordinating persistence with external events.
-
----
-
-## 10. Development and testing
-
-SignalForge is developed primarily in Python.
-
-The codebase uses typed contracts and modular components so that business rules can be tested independently from external services.
-
-### Engineering priorities
-
-- Pydantic models for explicit data contracts.
-- Dependency injection for independently testable services.
-- Deterministic qualification rules.
-- Traceable extraction and enrichment evidence.
-- Clear boundaries between stages.
-- Controlled asynchronous collection.
-- Structured logging and error reporting.
-- Testable output adapters.
-
-### Recommended test coverage
-
-**Discovery and normalization**
-- Valid and invalid source URLs.
-- Domain normalization.
-- Missing company attributes.
-- Duplicate records.
-- Invalid or unresolved identities.
-
-**Entity resolution**
-- Exact domain matches.
-- Name variations.
-- Similar but unrelated companies.
-- Conflicting source evidence.
-- Unresolved identity outcomes.
-
-**Enrichment**
-- Successful retrieval.
-- 404, forbidden, rate-limited and timeout responses.
-- Invalid content.
-- Missing pages.
-- Duplicate contacts.
-- Unsupported or malformed extraction output.
-- Observed versus generated email evidence.
-- DNS failures and Null MX responses.
-
-**Qualification**
-- Hard exclusions.
-- Unknown and incomplete information.
-- Tier 1 and Tier 2 signals.
-- Technology matches.
-- Missing evidence.
-- Invalid scoring configuration.
-- Score boundary conditions.
-- Explainability of results.
-
-**Orchestration and delivery**
-- Successful end-to-end evaluation.
-- Short-circuiting after confirmed disqualification.
-- Pending and manual-review handling.
-- Partial-stage failures.
-- Batch failure isolation.
-- Concurrency limits.
-- Retry and idempotency behavior.
-- Delivery failure and recovery.
-
-Tests should use controlled fixtures wherever possible. External services should be mocked for unit tests and tested separately through intentional integration tests.
-
----
-
-## 11. Security and responsible data handling
-
-SignalForge may process company information and personal contact information. Collection and use must be tied to a legitimate business purpose.
-
-Operational safeguards include:
-
-- Protecting API keys and credentials.
-- Restricting access to client datasets.
-- Redacting sensitive information from logs.
-- Maintaining source and provider provenance.
-- Respecting source restrictions and provider terms.
-- Applying appropriate collection limits.
-- Defining retention and deletion procedures.
-- Maintaining suppression and correction workflows.
-- Separating client data.
-- Reviewing qualification and outreach outputs.
-
-Automated contact or outreach workflows should only be enabled after appropriate legal-basis, suppression, review and delivery controls are in place.
-
-
-## 13. Measuring success
-
-SignalForge should be measured by the usefulness of its intelligence and its contribution to business outcomes.
-
-### Commercial performance
-
-- Suitable businesses identified.
-- Qualified opportunities generated.
-- Relevant stakeholders identified.
-- Positive commercial conversations.
-- Paying customers acquired.
-- Time from discovery to conversion.
-- Customer retention and repeat engagements.
-
-### Data quality
-
-- Usable source retrieval rate.
-- Company identity resolution rate.
-- Enrichment completeness.
-- Duplicate rate.
-- Contact evidence quality.
-- Qualification precision.
-- Evidence coverage.
-- Record freshness.
-- Client acceptance of delivered records.
-
-### Operational performance
-
-- Processing time per company.
-- Cost per enriched company.
-- Cost per qualified record.
-- Provider failure rate.
-- Retry and recovery success.
-- Batch completion rate.
-- Time to onboard a new ICP.
-- Time to deliver a customer-specific dataset.
-
-Raw record volume is not the primary measure of success. A smaller collection of accurate, relevant and useful records can be more valuable than a much larger collection of unverified information.
-
----
-
-## 14. Current engineering position
-
-SignalForge has progressed beyond its initial positioning as an agency discovery workflow. Its architecture has been examined across discovery, normalization, identity resolution, enrichment, qualification, tiering and orchestration.
-
-The shared enrichment contracts have been defined and reviewed. The qualification modules have been designed and reviewed, with several contract and reliability issues identified for resolution.
-
-The distinction between architectural design, code reviewed and verified production capability matters.
+The following distinction is important: reviewing a component, defining its contract and successfully operating it in production are three different milestones.
 
 | Area | Current position |
 |---|---|
 | ADL-first commercial direction | Defined |
 | Initial agency ICP | Defined |
-| Discovery and ingestion boundary | Designed |
-| Shared enrichment schemas | Defined and reviewed |
-| Crawler, extractor and verifier responsibilities | Designed and reviewed |
-| Entity resolution | Design and implementation review underway |
+| Discovery and normalization | Architecture established; implementation under continued review |
+| Entity resolution | Implementation and reliability review |
+| Shared enrichment contracts | Defined and reviewed |
+| Enrichment components | Architecture and code review |
 | Qualification rules | Designed and reviewed |
-| Weighted scoring model | Initial design reviewed; refinements required |
-| Tiering and routing | Initial design reviewed; contract alignment required |
-| Qualification orchestration | Initial implementation reviewed; reliability work remains |
-| Unified downstream delivery | Architectural direction defined |
-| Multi-client execution | Planned progressive implementation |
-| CRM, API and event delivery | Requires implementation and verification |
+| Scoring and tiering | Initial policies defined; validation required |
+| Pipeline orchestration | Implementation reviewed; contract and recovery work remains |
+| JSONL persistence | Implementation reviewed; failure and shutdown issues identified |
+| DuckDB and repository | Implementation reviewed; integration verification required |
+| Parquet publication | Implementation reviewed; end-to-end verification required |
+| Outbox and webhook delivery | Architecture and component review |
+| WhatsApp and email adapters | Integration design and code review |
+| Secure FastAPI entrypoint | Initial implementation reviewed; execution integration pending |
+| Dispatch worker | Initial structure reviewed; full behavior not yet verified |
+| GitHub Actions CI | Workflow configuration present; verification and test discovery alignment required |
+| Render deployment and cron | Planned; deployment and execution verification pending |
+| Multi-client execution | Progressive implementation planned |
 
-This table deliberately does not label a complete production workflow as operational merely because its schemas or initial modules exist.
+No external delivery integration or production execution capability should be considered operational until its complete workflow has been tested.
 
-The next engineering priority is to consolidate shared contracts across enrichment and qualification, then implement and test the complete path from a normalized company record to a reliable, explainable qualification result.
+--
+
+## 11. How ADL measures value
+
+SignalForge should be evaluated by the work it helps businesses complete, not simply the amount of information it collects.
+
+### Business outcomes
+
+- Relevant companies identified.
+- Research time reduced.
+- Suitable opportunities discovered.
+- Relevant stakeholders identified.
+- Qualified records accepted by customers.
+- Commercial conversations generated.
+- Paying customers acquired.
+- Repeat business and retention.
+
+### Information quality
+
+- Company identity accuracy.
+- Duplicate rate.
+- Enrichment completeness.
+- Contact evidence quality.
+- Source traceability.
+- Qualification precision.
+- Data freshness.
+
+### Operational performance
+
+- Processing time per company.
+- Cost per usable record.
+- Cost per qualified opportunity.
+- Failed processing rate.
+- Delivery success rate.
+- Retry and recovery performance.
+- Time required to configure a new ICP.
+
+A smaller number of accurate, relevant records can be more valuable than thousands of incomplete or poorly researched companies.
 
 ---
 
-## 15. Engineering principles
+## 12. Engineering principles
 
-1. **Business outcomes first.** Build around information that helps an organization make better decisions.
-2. **ADL first, reusable by design.** Validate the system internally before scaling to external customers.
-3. **Evidence over assumptions.** Important observations and decisions must have traceable sources.
-4. **Identity before enrichment.** Resolve which company a record represents before building expensive intelligence around it.
-5. **Missing is not negative.** Incomplete information must remain distinguishable from a confirmed exclusion.
-6. **Separate responsibilities.** Discovery, identity, enrichment, qualification and delivery should have clear contracts.
-7. **Deterministic where possible.** Qualification rules should be explainable and repeatable.
-8. **Configurable by business requirement.** Different customers and ICPs should not be forced into identical rules.
-9. **Delivery is part of the product.** Intelligence must reach the systems and people who use it.
-10. **Reliability before scale.** Handle failures, retries, duplicate execution and partial results deliberately.
-11. **Protect customer data.** Maintain appropriate access boundaries, security and responsible collection.
-12. **Documentation follows implementation.** Clearly distinguish what exists, what has been reviewed and what remains planned.
+1. **Solve real operational problems.** Reduce repetitive research, data collection and administrative work.
+2. **Business requirements come first.** Technology serves the information requirement.
+3. **Build for ADL first.** Validate the internal acquisition workflow before scaling to external customers.
+4. **Evidence over assumptions.** Preserve the source behind important observations.
+5. **Identity before enrichment.** Understand which company a record represents.
+6. **Missing is not negative.** Incomplete evidence should remain distinguishable from confirmed exclusion.
+7. **Separate responsibilities.** Keep discovery, enrichment, qualification, persistence and delivery independent.
+8. **Make decisions explainable.** Qualification should show why a business was prioritized.
+9. **Design for different requirements.** Support configurable ICPs and outputs.
+10. **Delivery is part of the product.** Information must reach the people and systems that need it.
+11. **Reliability before scale.** Handle failures, retries and duplicate execution deliberately.
+12. **Documentation reflects reality.** Distinguish implemented, reviewed, tested and planned capabilities.
 
 ---
 
@@ -863,3 +710,4 @@ The next engineering priority is to consolidate shared contracts across enrichme
 **GitHub:** https://github.com/aingadatalabs  
 **Contact:** hello@aingadatalabs.com
 
+*ADL-SignalForge — less time searching, organizing and repeating research; more time making informed business decisions.*
