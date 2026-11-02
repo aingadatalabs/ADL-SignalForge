@@ -1,37 +1,57 @@
-# =========================================================================
-# 2. Pipeline Trigger Cron Job
-# =========================================================================
-- type: cron
-  name: adl-signalforge-pipeline-cron
-  env: python
-  region: oregon
-  plan: starter
-  branch: main
-  schedule: "0 2 * * *"
-  command: |
-    curl -sS -i --retry 3 --retry-delay 5 --max-time 120 -X POST https://adl-signalforge-api.onrender.com/api/v1/trigger-pipeline -H "X-API-Key: $API_KEY" -H "Content-Length: 0"
-  envVars:
-    - key: API_KEY
-      fromService:
-        type: web
-        name: adl-signalforge-api
-        envVarKey: API_KEY
+services:
+  # =========================================================================
+  # 1. FastAPI Control Plane Web Service
+  # =========================================================================
+  - type: web
+    name: adl-signalforge-api
+    env: python
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: API_KEY
+        generateValue: true
 
-# =========================================================================
-# 3. Outbox Dispatch Worker Cron Job
-# =========================================================================
-- type: cron
-  name: adl-signalforge-dispatch-cron
-  env: python
-  region: oregon
-  plan: starter
-  branch: main
-  schedule: "*/5 * * * *"
-  command: |
-    curl -sS -i --retry 2 --retry-delay 2 --max-time 30 -X POST https://adl-signalforge-api.onrender.com/api/v1/dispatch/process -H "X-API-Key: $API_KEY" -H "Content-Length: 0"
-  envVars:
-    - key: API_KEY
-      fromService:
+  # =========================================================================
+  # 2. Pipeline Trigger Cron Job
+  # =========================================================================
+  - type: cron
+    name: adl-signalforge-pipeline-cron
+    env: python
+    region: oregon
+    plan: starter
+    branch: main
+    schedule: "0 2 * * *"
+    command: |
+      curl -sS -i --retry 3 --retry-delay 5 --max-time 120 -X POST https://adl-signalforge-api.onrender.com/api/v1/trigger-pipeline -H "X-API-Key: $API_KEY" -H "Content-Length: 0"
+    envVars:
+      - key: API_KEY
+        fromService:
+          type: web
+          name: adl-signalforge-api
+          envVarKey: API_KEY
+
+  # =========================================================================
+  # 3. Outbox Dispatch Worker Cron Job
+  # =========================================================================
+  - type: cron
+    name: adl-signalforge-dispatch-cron
+    env: python
+    region: oregon
+    plan: starter
+    branch: main
+    schedule: "*/5 * * * *"
+    command: |
+      curl -sS -i --retry 2 --retry-delay 2 --max-time 30 -X POST https://adl-signalforge-api.onrender.com/api/v1/dispatch/process -H "X-API-Key: $API_KEY" -H "Content-Length: 0"
+    envVars:
+      - key: API_KEY
+        fromService:
+          type: web
+          name: adl-signalforge-api
+          envVarKey: API_KEY
         type: web
         name: adl-signalforge-api
         envVarKey: API_KEY
