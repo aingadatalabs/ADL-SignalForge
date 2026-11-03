@@ -1,5 +1,5 @@
 """
-storage/parquet_sink.py — Production-Hardened Parquet Export Adapter
+storage/parquet_sink.py 
 
 Features:
 - Exclusive staging directory generation preventing release collisions and accidental overwrites.
@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import duckdb
 from pydantic import BaseModel, Field
-
+from typing import Any, Dict, List, Optional, Set, Union
 from storage.models.storage import (
     DatasetContract,
     FileManifestEntry,
