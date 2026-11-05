@@ -3,6 +3,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Security, status
@@ -67,12 +68,14 @@ pipeline_runner: Optional[Any] = None
 async def lifespan(app: FastAPI):
     global db_client, repository, pipeline_runner
     logger.info("Initializing ADL-SignalForge Control Plane Service & Storage...")
-   from pathlib import Path
-
-default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
-db_path = Path(os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", default_db_dir / "signalforge.duckdb")))
+    
+    default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+    db_path = Path(os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", default_db_dir / "signalforge.duckdb")))
     
     try:
+        # Ensure parent directory exists and is writable
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        
         if DuckDBClient and SignalForgeRepository and PipelineRunner:
             db_client = DuckDBClient(db_path=db_path)
             db_client.initialize()
@@ -99,6 +102,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+#  Path Resolution with Persistent Disk Auto-Detection
+    persistent_dir = Path("/data")
+    if persistent_dir.exists() and os.access(persistent_dir, os.W_OK):
+        default_db_dir = persistent_dir
+        logger.info("Detected writable persistent disk mount at /data.")
+    else:
+        default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+
+    db_path = Path(os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", default_db_dir / "signalforge.duckdb")))
 # ------------------------------------------------------------------------------
 # Schemas & DTOs
 # ------------------------------------------------------------------------------
@@ -138,9 +150,16 @@ async def health_check():
 
 @app.get("/readyz", response_model=ReadinessResponse, tags=["Monitoring"])
 async def readiness_check():
-    db_path = os.getenv("DATABASE_PATH", "/data/signalforge.duckdb")
-    storage_dir = os.path.dirname(db_path) or "."
-    storage_ok = os.access(storage_dir, os.W_OK) if os.path.exists(storage_dir) else True
+    default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+    db_path_str = os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", str(default_db_dir / "signalforge.duckdb")))
+    storage_dir = os.path.dirname(db_path_str) or "."
+    
+    storage_ok = True
+    try:
+        os.makedirs(storage_dir, exist_ok=True)
+        storage_ok = os.access(storage_dir, os.W_OK)
+    except Exception:
+        storage_ok = False
     
     if not storage_ok:
         raise HTTPException(
@@ -162,10 +181,7 @@ async def execute_background_pipeline(run_id: str, pipeline_name: str, parameter
     try:
         logger.info(f"Starting background execution for run '{run_id}' ({pipeline_name})...")
         with pipeline_runner.run_context(run_id=run_id, pipeline_name=pipeline_name) as execution:
-            # --- Actual Workload Execution Stub / Integration ---
-            # Replace or extend this block with your discovery, extraction, and enrichment phases.
             execution.stage("discovery_and_acquisition")
-            # Example simulated workload accounting:
             execution.record_received(10)
             execution.record_succeeded(10)
             
