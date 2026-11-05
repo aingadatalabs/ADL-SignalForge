@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
     global db_client, repository, pipeline_runner
     logger.info("Initializing ADL-SignalForge Control Plane Service & Storage...")
     
-    # --- Single Unified Path Resolution with Persistent Disk Auto-Detection ---
+    # --- Unified Path Resolution with Persistent Disk Auto-Detection ---
     persistent_dir = Path("/data")
     if persistent_dir.exists() and os.access(persistent_dir, os.W_OK):
         default_db_dir = persistent_dir
@@ -85,7 +85,6 @@ async def lifespan(app: FastAPI):
         
         if DuckDBClient and SignalForgeRepository and PipelineRunner:
             db_client = DuckDBClient(db_path=db_path)
-            db_client.initialize()
             repository = SignalForgeRepository(db_client=db_client)
             pipeline_runner = PipelineRunner(repository=repository)
             logger.info(f"Storage and PipelineRunner initialized successfully using path: {db_path}")
