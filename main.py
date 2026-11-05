@@ -69,7 +69,14 @@ async def lifespan(app: FastAPI):
     global db_client, repository, pipeline_runner
     logger.info("Initializing ADL-SignalForge Control Plane Service & Storage...")
     
-    default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+    # --- Single Unified Path Resolution with Persistent Disk Auto-Detection ---
+    persistent_dir = Path("/data")
+    if persistent_dir.exists() and os.access(persistent_dir, os.W_OK):
+        default_db_dir = persistent_dir
+        logger.info("Detected writable persistent disk mount at /data.")
+    else:
+        default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+
     db_path = Path(os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", default_db_dir / "signalforge.duckdb")))
     
     try:
@@ -102,41 +109,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global db_client, repository, pipeline_runner
-    logger.info("Initializing ADL-SignalForge Control Plane Service & Storage...")
-    
-    # --- Single Unified Path Resolution with Persistent Disk Auto-Detection ---
-    persistent_dir = Path("/data")
-    if persistent_dir.exists() and os.access(persistent_dir, os.W_OK):
-        default_db_dir = persistent_dir
-        logger.info("Detected writable persistent disk mount at /data.")
-    else:
-        default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
-
-    db_path = Path(os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", default_db_dir / "signalforge.duckdb")))
-    
-    try:
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        if DuckDBClient and SignalForgeRepository and PipelineRunner:
-            db_client = DuckDBClient(db_path=db_path)
-            db_client.initialize()
-            repository = SignalForgeRepository(db_client=db_client)
-            pipeline_runner = PipelineRunner(repository=repository)
-            logger.info(f"Storage and PipelineRunner initialized successfully using path: {db_path}")
-        else:
-            logger.warning("Storage modules could not be imported. Running in degraded/stub mode.")
-    except Exception as e:
-        logger.critical(f"Failed to initialize storage layer at {db_path}: {e}", exc_info=True)
-        raise
-        
-    yield
-    
-    logger.info("Shutting down ADL-SignalForge Control Plane Service...")
-    if db_client and hasattr(db_client, "close"):
-        db_client.close()
 # ------------------------------------------------------------------------------
 # Schemas & DTOs
 # ------------------------------------------------------------------------------
@@ -176,7 +148,12 @@ async def health_check():
 
 @app.get("/readyz", response_model=ReadinessResponse, tags=["Monitoring"])
 async def readiness_check():
-    default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+    persistent_dir = Path("/data")
+    if persistent_dir.exists() and os.access(persistent_dir, os.W_OK):
+        default_db_dir = persistent_dir
+    else:
+        default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+
     db_path_str = os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", str(default_db_dir / "signalforge.duckdb")))
     storage_dir = os.path.dirname(db_path_str) or "."
     
