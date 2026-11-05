@@ -67,8 +67,10 @@ pipeline_runner: Optional[Any] = None
 async def lifespan(app: FastAPI):
     global db_client, repository, pipeline_runner
     logger.info("Initializing ADL-SignalForge Control Plane Service & Storage...")
-    
-    db_path = os.getenv("DATABASE_PATH", "/data/signalforge.duckdb")
+   from pathlib import Path
+
+default_db_dir = Path("/tmp/data") if os.getenv("RENDER") else Path("./data")
+db_path = Path(os.getenv("DATABASE_PATH", os.getenv("DUCKDB_PATH", default_db_dir / "signalforge.duckdb")))
     
     try:
         if DuckDBClient and SignalForgeRepository and PipelineRunner:
