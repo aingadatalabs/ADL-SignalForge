@@ -373,20 +373,21 @@ The delivery architecture is being developed around three responsibilities.
 
 **1. API control plane**
 
-The FastAPI application provides a controlled interface for monitoring and initiating pipeline and dispatch operations.
+The FastAPI application provides a controlled interface for monitoring storage health, reading prospects and initiating pipeline operations.
 
-Planned endpoints:
+Documented endpoints:
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| GET | `/healthz` | Service health |
-| GET | `/readyz` | Dependency readiness |
+| GET | `/healthz` | Service and storage health |
+| GET | `/api/v1/prospects` | Filter and paginate persisted prospects |
+| GET | `/api/v1/prospects/{prospect_id}` | Retrieve a prospect and its persisted detail |
+| GET | `/api/v1/prospects/export` | Stream prospects as CSV or JSONL |
 | POST | `/api/v1/trigger-pipeline` | Pipeline execution trigger |
-| GET | `/api/v1/runs/{run_id}` | Run status |
-| POST | `/api/v1/dispatch/process` | Outbox processing |
-| GET | `/api/v1/dispatch/status` | Dispatch status |
 
-Pipeline control endpoints require authentication using environment-managed API credentials.
+Prospect filters include `qualification_score_min`, `industry` and `updated_since`; list pagination uses `limit` and `offset`. API keys are passed using `X-API-Key`. `API_KEY` (or `API_ADMIN_KEY`) grants admin access; `API_READ_KEY` or comma-separated `API_READ_KEYS` grants prospect read access only. Authenticated requests return `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers; the default limit is 60 requests per key per minute and can be changed with `API_RATE_LIMIT_PER_MINUTE`.
+
+The current rate limiter is process-local; deployments with multiple workers or instances need a shared rate-limit backend for a global quota. The authenticated `/api/v1/dispatch/process` testing hook is excluded from OpenAPI; production outbox processing should run in a scheduled worker.
 
 **2. Scheduled execution**
 
@@ -595,6 +596,16 @@ The intended adapters include:
 ### API and deployment
 
 The API entrypoint is prepared for authenticated execution and Render deployment.
+
+For local development, create a `.env` file in the repository root with a non-empty `API_KEY` value, then start the application from that directory:
+
+```bash
+API_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+printf 'API_KEY=%s\n' "$API_KEY" > .env
+uvicorn main:app --reload
+```
+
+`main.py` loads the root `.env` file when the app is imported. Keep `.env` private and use `uvicorn main:app` to start the server; running `python main.py` alone does not launch Uvicorn.
 
 The intended operating model includes scheduled pipeline triggers, bounded dispatch operations and health monitoring.
 

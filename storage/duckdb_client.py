@@ -174,6 +174,18 @@ class DuckDBClient:
             finally:
                 read_conn.close()
 
+    def check_connection(self) -> bool:
+        """Check database availability using the existing connection configuration."""
+        if self.read_only:
+            with self.connection() as conn:
+                return conn.execute("SELECT 1").fetchone() == (1,)
+
+        with OperationLease(self, is_write=False):
+            with self._write_lock:
+                if self._write_conn is None:
+                    raise RuntimeError("Active write connection is missing.")
+                return self._write_conn.execute("SELECT 1").fetchone() == (1,)
+
     @contextmanager
     def transaction(self) -> Generator[duckdb.DuckDBPyConnection, None, None]:
         """
