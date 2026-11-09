@@ -530,38 +530,31 @@ The repository currently includes the following areas:
 
 ```text
 ADL-SignalForge/
-│
-├── ADL/
-│   └── Internal acquisition workflow
-│
+├── .github/workflows/       CI/CD automation
+├── agencies/
+│   ├── adl/                 Implemented ADL pipeline and private processing packages
+│   ├── pearl_lemon/         Pipeline entrypoint and agency configuration scaffolds
+│   ├── cience/              Pipeline entrypoint and agency configuration scaffolds
+│   ├── fiteat/              Pipeline entrypoint and agency configuration scaffolds
+│   └── elimuflow/           Pipeline entrypoint and agency configuration scaffolds
+├── core/
+│   ├── base.py              Shared pipeline stage contracts
+│   ├── client.py            Async HTTP client and optional proxy selection
+│   ├── contracts.py         Shared enricher and qualifier interfaces
+│   └── database.py          Shared DuckDB database client
+├── enrichment/              Shared enrichment-stage contracts
+├── qualification/           Shared qualification-stage contracts
 ├── dispatch/
-│   ├── outbox.py
-│   ├── webhook_client.py
-│   └── notifier.py
-│
 ├── storage/
-│   ├── models/
-│   ├── duckdb_client.py
-│   ├── jsonl_store.py
-│   ├── parquet_sink.py
-│   ├── pipeline_runner.py
-│   └── repository.py
-│
+├── data/                    Local pipeline state and outputs
 ├── scripts/
-│   └── worker.py
-│
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-│
+├── tests/
 ├── main.py
 ├── requirements.txt
-├── render.yaml
-├── test_signalforge.py
-└── README.md
+└── render.yaml
 ```
 
-This illustrates the current working repository structure, not a claim that all components are production-ready.
+ADL has the implemented pipeline. Pearl Lemon, CIENCE, FitEat, and ElimuFlow have matching agency configuration and package scaffolds; their pipeline entrypoints intentionally report that workflows are not configured yet. Root `enrichment/` and `qualification/` expose shared contracts, while each agency owns its pipeline-specific settings and engine packages. Existing imports from `ADL` and `storage.duckdb_client` remain available as compatibility aliases.
 
 ### Persistence and execution
 
@@ -605,7 +598,9 @@ printf 'API_KEY=%s\n' "$API_KEY" > .env
 uvicorn main:app --reload
 ```
 
-`main.py` loads the root `.env` file when the app is imported. Keep `.env` private and use `uvicorn main:app` to start the server; running `python main.py` alone does not launch Uvicorn.
+`main.py` loads the root `.env` file when the app is imported. Keep `.env` private and use `uvicorn main:app` to start the API. Run the implemented agency pipeline with `python main.py --agency adl`; `SIGNALFORGE_AGENCY=adl` can be used instead of the flag.
+
+Proxy use is disabled unless `SIGNALFORGE_PROXY_PROVIDER` is set to `oxylabs` or `nodemaven`. Configure the selected provider's URL with `OXYLABS_PROXY_URL` or `NODEMAVEN_PROXY_URL`; credentials belong in environment configuration, not source control.
 
 The intended operating model includes scheduled pipeline triggers, bounded dispatch operations and health monitoring.
 

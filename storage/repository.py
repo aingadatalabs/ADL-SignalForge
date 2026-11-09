@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Set
 from urllib.parse import urlsplit
 
-from storage.duckdb_client import DuckDBClient
+from core.database import DuckDBClient
 
 logger = logging.getLogger("SignalForgeRepository")
 

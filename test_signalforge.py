@@ -14,9 +14,9 @@ if str(root_path) not in sys.path:
     sys.path.insert(0, str(root_path))
 
 import frankensurf as fs  # type: ignore[reportMissingTypeStubs]
-from ADL.run_pipeline import _is_valid_http_url
-from ADL.extraction.extraction_parser import extract_agencies_from_html
-from ADL.extraction.normalizers import AgencyNormalizer
+from agencies.adl.run_pipeline import _is_valid_http_url
+from agencies.adl.extraction.extraction_parser import extract_agencies_from_html
+from agencies.adl.extraction.normalizers import AgencyNormalizer
 
 async def run_live_pipeline_test() -> None:
     print("=== STARTING ADL-SIGNALFORGE LIVE PIPELINE & EXTRACTION TEST ===")

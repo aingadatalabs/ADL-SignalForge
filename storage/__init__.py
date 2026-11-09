@@ -6,7 +6,7 @@ and strict data contracts/publication models for downstream pipeline and API con
 """
 
 # Core Storage & Processing Clients
-from storage.duckdb_client import DuckDBClient
+from core.database import DuckDBClient
 from storage.jsonl_store import JSONLStore
 from storage.parquet_sink import ParquetSink
 from storage.repository import SignalForgeRepository

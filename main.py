@@ -1,3 +1,5 @@
+import argparse
+import asyncio
 import csv
 import hashlib
 import io
@@ -40,7 +42,7 @@ except ImportError:
         raise NotImplementedError("dispatch.outbox module not found.")
 
 try:
-    from storage.duckdb_client import DuckDBClient
+    from core.database import DuckDBClient
     from storage.repository import SignalForgeRepository
     from storage.pipeline_runner import PipelineRunner, PipelineInitializationError
 except ImportError as e:
@@ -779,3 +781,28 @@ async def dispatch_process(limit: int = 50):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Outbox processing failed: {str(e)}",
         )
+
+
+def _run_cli() -> None:
+    parser = argparse.ArgumentParser(description="Run an ADL-SignalForge agency pipeline.")
+    parser.add_argument(
+        "--agency",
+        choices=("adl",),
+        default=os.getenv("SIGNALFORGE_AGENCY", "adl").strip().lower(),
+        help="Agency pipeline to run (also configurable with SIGNALFORGE_AGENCY).",
+    )
+    parser.add_argument(
+        "--query",
+        default="lead generation marketing agencies digital growth",
+        help="Discovery query for the selected agency pipeline.",
+    )
+    parser.add_argument("--max-results", type=int, default=5)
+    args = parser.parse_args()
+
+    from agencies.adl.run_pipeline import run_pipeline as run_adl_pipeline
+
+    asyncio.run(run_adl_pipeline(query=args.query, max_results=args.max_results))
+
+
+if __name__ == "__main__":
+    _run_cli()

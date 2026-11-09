@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
-from storage.duckdb_client import DuckDBClient
+from core.database import DuckDBClient
 
 
 @pytest.fixture
