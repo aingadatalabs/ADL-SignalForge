@@ -3,7 +3,7 @@
 import json
 import os
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,6 +25,7 @@ class PearlLemonDeduplicator(EntityResolver):
         normalized_records: Iterable[dict[str, Any]] | None = None,
         input_path: str | Path = DEFAULT_NORMALIZED_RECORDS_PATH,
         output_path: str | Path = DEFAULT_RESOLVED_RECORDS_PATH,
+        pipeline_context: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(similarity_threshold=similarity_threshold)
         self.input_path = Path(input_path)
@@ -33,6 +34,9 @@ class PearlLemonDeduplicator(EntityResolver):
             list(normalized_records)
             if normalized_records is not None
             else self._read_records(self.input_path)
+        )
+        self.pipeline_context = (
+            dict(pipeline_context) if pipeline_context is not None else None
         )
         self.resolved_records: list[dict[str, Any]] = []
 
@@ -60,6 +64,9 @@ class PearlLemonDeduplicator(EntityResolver):
     def process(self) -> list[dict[str, Any]]:
         """Resolve duplicates and overwrite the resolved-record JSONL snapshot."""
         self.resolved_records = self.resolve(self.normalized_records)
+        if self.pipeline_context is not None:
+            for record in self.resolved_records:
+                record["_pipeline_context"] = self.pipeline_context
         self._write_resolved_records()
         return self.resolved_records
 

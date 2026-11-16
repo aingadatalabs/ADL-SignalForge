@@ -114,6 +114,34 @@ def test_extraction_records_are_consumable_by_shared_normalizer(tmp_path):
     assert normalized["records"][0]["extraction_evidence"]
 
 
+def test_run_extraction_persists_pipeline_context_with_raw_records(
+    tmp_path,
+    monkeypatch,
+):
+    async def fake_extract_raw_leads(self, _max_results_per_query):
+        return [{"agency_name": "Example Software", "domain": "example.com"}]
+
+    monkeypatch.setattr(
+        PearlLemonExtractionEngine,
+        "extract_raw_leads",
+        fake_extract_raw_leads,
+    )
+    output_path = tmp_path / "raw_records.jsonl"
+
+    records = asyncio.run(
+        run_extraction(
+            icp=small_icp(),
+            client=object(),
+            output_path=output_path,
+            pipeline_context={"run_id": "test-run", "agency": "pearl_lemon"},
+        )
+    )
+
+    persisted = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert records[0]["_pipeline_context"]["run_id"] == "test-run"
+    assert persisted["_pipeline_context"]["agency"] == "pearl_lemon"
+
+
 def test_partial_query_failure_is_surfaced_with_records_in_exception():
     client = FakeFrankensurf(fail_on_intent_query=True)
     engine = PearlLemonExtractionEngine(icp=small_icp(), client=client)

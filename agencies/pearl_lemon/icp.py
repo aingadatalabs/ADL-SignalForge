@@ -12,6 +12,23 @@ from agencies.adl.qualification_engine.rules import QualificationConfig
 
 ICPStatus = Literal["eligible", "disqualified", "pending"]
 OutreachReadiness = Literal["ready", "enrichment_required", "blocked"]
+FirmographicFactStatus = Literal[
+    "matched",
+    "out_of_target",
+    "confirmed",
+    "not_confirmed",
+    "in_range",
+    "potentially_in_range",
+    "out_of_range",
+    "unknown",
+]
+
+
+class FirmographicFact(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    status: FirmographicFactStatus
+    observed_value: Any | None = None
 
 
 class ICPMatchAssessment(BaseModel):
@@ -28,6 +45,7 @@ class ICPMatchAssessment(BaseModel):
     ]
     evidence_gates: dict[str, bool]
     outreach_readiness: OutreachReadiness
+    firmographic_facts: dict[str, FirmographicFact] = Field(default_factory=dict)
     outreach_blockers: list[str] = Field(default_factory=list)
     matched_industries: list[str] = Field(default_factory=list)
     matched_job_titles: list[str] = Field(default_factory=list)
@@ -312,6 +330,64 @@ class PearlLemonICP(QualificationConfig):
         )
 
         evidence_gates = self._evidence_gates(account_data)
+        firmographic_facts = {
+            "industry": FirmographicFact(
+                status=(
+                    "matched"
+                    if matched_industries
+                    else "unknown"
+                    if not industry_known
+                    else "out_of_target"
+                ),
+                observed_value=industry_values or None,
+            ),
+            "geography": FirmographicFact(
+                status=(
+                    "matched"
+                    if geography_match is True
+                    else "out_of_target"
+                    if geography_match is False
+                    else "unknown"
+                ),
+                observed_value=geography_values or None,
+            ),
+            "business_model": FirmographicFact(
+                status=(
+                    "confirmed"
+                    if is_b2b is True
+                    else "not_confirmed"
+                    if is_b2b is False
+                    else "unknown"
+                ),
+                observed_value=business_models or None,
+            ),
+            "employee_count": FirmographicFact(
+                status=team_size_status,
+                observed_value=next(
+                    (
+                        account_data.get(key)
+                        for key in (
+                            "employee_count",
+                            "team_size_text",
+                            "employee_range",
+                            "team_size",
+                        )
+                        if account_data.get(key) is not None
+                    ),
+                    None,
+                ),
+            ),
+            "commercial_capacity": FirmographicFact(
+                status=(
+                    "confirmed"
+                    if commercial_capacity is True
+                    else "not_confirmed"
+                    if commercial_capacity is False
+                    else "unknown"
+                ),
+                observed_value=commercial_capacity,
+            ),
+        }
         disqualification_reasons = self._disqualification_reasons(
             account_data,
             industry_values,
@@ -365,6 +441,7 @@ class PearlLemonICP(QualificationConfig):
             team_size_status=team_size_status,
             evidence_gates=evidence_gates,
             outreach_readiness=outreach_readiness,
+            firmographic_facts=firmographic_facts,
             outreach_blockers=outreach_blockers,
             matched_industries=matched_industries,
             matched_job_titles=matched_job_titles,
@@ -487,6 +564,8 @@ class PearlLemonICP(QualificationConfig):
         upper = numbers[1] if len(numbers) > 1 and not is_open_ended else (
             None if is_open_ended else lower
         )
+        if upper is not None and upper < lower:
+            return "unknown"
         if upper is not None and upper < self.min_team_size:
             return "out_of_range"
         if lower > self.max_team_size:
@@ -596,10 +675,16 @@ class PearlLemonICP(QualificationConfig):
     def _evidence_gates(cls, data: Mapping[str, Any]) -> dict[str, bool]:
         identity = data.get("company_id") or data.get("company_name")
         domain = data.get("canonical_domain") or data.get("domain")
-        identity_resolved = data.get("company_identity_resolved") is True or (
-            bool(identity)
-            and cls._valid_domain(domain)
-            and str(identity).strip().casefold() not in {"unknown", "unresolved", "none"}
+        declared_identity_state = data.get("company_identity_resolved")
+        identity_resolved = (
+            declared_identity_state
+            if isinstance(declared_identity_state, bool)
+            else (
+                bool(identity)
+                and cls._valid_domain(domain)
+                and str(identity).strip().casefold()
+                not in {"unknown", "unresolved", "none"}
+            )
         )
         website_evidence = cls._has_website_evidence(data)
         activity_supported = cls._has_activity_evidence(data)
@@ -777,14 +862,20 @@ class PearlLemonICP(QualificationConfig):
         if not isinstance(value, str) or not value.strip():
             return ""
         raw = value.strip()
-        parsed = urlsplit(raw if "://" in raw else f"//{raw}")
+        try:
+            parsed = urlsplit(raw if "://" in raw else f"//{raw}")
+        except ValueError:
+            return ""
         return (parsed.hostname or "").rstrip(".").casefold()
 
     @classmethod
     def _valid_url(cls, value: Any) -> bool:
         if not isinstance(value, str) or not value.strip():
             return False
-        parsed = urlsplit(value.strip())
+        try:
+            parsed = urlsplit(value.strip())
+        except ValueError:
+            return False
         return (
             parsed.scheme in {"http", "https"}
             and cls._valid_domain(parsed.hostname)

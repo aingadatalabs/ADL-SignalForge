@@ -74,6 +74,11 @@ class CompanyQualificationInput(BaseModel):
     canonical_domain: str
     website: str | None = None
     description: str | None = None
+    industry: str | None = None
+    industries: list[str] = Field(default_factory=list)
+    business_model: str | None = None
+    company_type: str | None = None
+    organization_type: str | None = None
     services: list[str] = Field(default_factory=list)
     country_code: str | None = None
     team_size_text: str | None = None
@@ -136,9 +141,26 @@ class DeterministicRuleEngine:
                 observed_value=hostname,
             ))
 
-        # R003: Negative Keyword Check (Field-aware evaluation)
-        text_corpus = f"{candidate_input.company_name} {candidate_input.description or ''} {' '.join(candidate_input.services)}".lower()
-        matched_keyword = next((kw for kw in self.config.blocked_keywords if kw in text_corpus), None)
+        # R003: Excluded entity check over identity/classification fields only.
+        structured_values = [
+            candidate_input.company_name,
+            candidate_input.industry or "",
+            *candidate_input.industries,
+            candidate_input.business_model or "",
+            candidate_input.company_type or "",
+            candidate_input.organization_type or "",
+        ]
+        structured_corpus = " ".join(
+            self._normalize_keyword_text(value) for value in structured_values
+        )
+        matched_keyword = next(
+            (
+                keyword
+                for keyword in self.config.blocked_keywords
+                if f" {self._normalize_keyword_text(keyword)} " in f" {structured_corpus} "
+            ),
+            None,
+        )
         if matched_keyword:
             checks.append(RuleCheck(
                 rule_id="R003",
@@ -276,4 +298,10 @@ class DeterministicRuleEngine:
             if "+" in size_str:
                 return (val, None) # Open-ended ceiling for 50+
             return (val, val)
+        if parsed_nums[1] < parsed_nums[0]:
+            return None
         return (parsed_nums[0], parsed_nums[1])
+
+    @staticmethod
+    def _normalize_keyword_text(value: str) -> str:
+        return " ".join(re.sub(r"[^a-z0-9]+", " ", value.casefold()).split())

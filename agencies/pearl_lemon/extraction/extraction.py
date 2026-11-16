@@ -346,16 +346,31 @@ async def run_extraction(
     icp: PearlLemonICP = DEFAULT_PEARL_LEMON_ICP,
     client: Any | None = None,
     output_path: str | Path = DEFAULT_RAW_RECORDS_PATH,
+    pipeline_context: Mapping[str, Any] | None = None,
 ) -> list[RawRecord]:
     """Run discovery and append successful raw records to the extraction JSONL file."""
     engine = PearlLemonExtractionEngine(icp=icp, client=client)
     try:
         records = await engine.extract_raw_leads(max_results_per_query)
     except ExtractionRunError as exc:
-        _write_raw_records(exc.partial_results, output_path)
-        raise
+        partial_records = _attach_pipeline_context(
+            exc.partial_results, pipeline_context
+        )
+        _write_raw_records(partial_records, output_path)
+        raise ExtractionRunError(exc.failures, partial_records) from exc
+    records = _attach_pipeline_context(records, pipeline_context)
     _write_raw_records(records, output_path)
     return records
+
+
+def _attach_pipeline_context(
+    records: Sequence[RawRecord],
+    pipeline_context: Mapping[str, Any] | None,
+) -> list[RawRecord]:
+    if pipeline_context is None:
+        return list(records)
+    context = dict(pipeline_context)
+    return [{**record, "_pipeline_context": context} for record in records]
 
 
 def _write_raw_records(records: Sequence[RawRecord], output_path: str | Path) -> None:
