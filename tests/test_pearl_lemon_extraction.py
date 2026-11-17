@@ -1,5 +1,7 @@
 import asyncio
 import json
+import threading
+import time
 
 import pytest
 
@@ -99,6 +101,34 @@ def test_extraction_uses_observed_frankensurf_interface_and_preserves_unknowns()
     assert records[1]["website_evidence_available"] is False
 
 
+def test_extraction_runs_queries_with_a_bounded_concurrency():
+    class ConcurrentSearchClient:
+        def __init__(self):
+            self.active = 0
+            self.max_active = 0
+            self.lock = threading.Lock()
+
+        def search(self, _query: str, *, recency: str):
+            assert recency == "month"
+            with self.lock:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            time.sleep(0.03)
+            with self.lock:
+                self.active -= 1
+            return []
+
+    client = ConcurrentSearchClient()
+    engine = PearlLemonExtractionEngine(icp=small_icp(), client=client)
+
+    records = asyncio.run(
+        engine.extract_raw_leads(max_results_per_query=1, max_concurrency=2)
+    )
+
+    assert records == []
+    assert client.max_active == 2
+
+
 def test_extraction_records_are_consumable_by_shared_normalizer(tmp_path):
     engine = PearlLemonExtractionEngine(icp=small_icp(), client=FakeFrankensurf())
     records = asyncio.run(engine.extract_raw_leads(max_results_per_query=1))
@@ -118,7 +148,10 @@ def test_run_extraction_persists_pipeline_context_with_raw_records(
     tmp_path,
     monkeypatch,
 ):
-    async def fake_extract_raw_leads(self, _max_results_per_query):
+    async def fake_extract_raw_leads(
+        self, _max_results_per_query, *, max_concurrency
+    ):
+        assert max_concurrency == 4
         return [{"agency_name": "Example Software", "domain": "example.com"}]
 
     monkeypatch.setattr(
@@ -173,6 +206,29 @@ def test_run_extraction_persists_and_returns_raw_records(tmp_path):
         json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()
     ]
     assert persisted_records == records
+
+
+def test_run_extraction_creates_empty_snapshot_when_no_records_are_found(
+    tmp_path,
+    monkeypatch,
+):
+    async def no_records(self, _max_results_per_query, *, max_concurrency):
+        return []
+
+    monkeypatch.setattr(PearlLemonExtractionEngine, "extract_raw_leads", no_records)
+    output_path = tmp_path / "extraction" / "raw_records.jsonl"
+
+    records = asyncio.run(
+        run_extraction(
+            icp=small_icp(),
+            client=object(),
+            output_path=output_path,
+        )
+    )
+
+    assert records == []
+    assert output_path.exists()
+    assert output_path.read_text(encoding="utf-8") == ""
 
 
 def test_run_extraction_persists_partial_records_before_raising(tmp_path):

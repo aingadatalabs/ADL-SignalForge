@@ -808,13 +808,21 @@ async def run_qualification(
     output_path: str | Path = DEFAULT_QUALIFIED_LEADS_PATH,
     *,
     settings: PearlLemonQualificationSettings | None = None,
+    max_concurrency: int = 4,
 ) -> list[PearlLemonQualificationResult]:
     """Qualify every enriched record and atomically save the result snapshot."""
+    if max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
     source_records = _read_enriched_records(input_path)
     orchestrator = PearlLemonQualificationOrchestrator(settings)
     results: list[PearlLemonQualificationResult] = []
-    for record in source_records:
-        results.append(await orchestrator.evaluate_candidate(record))
+    for batch_start in range(0, len(source_records), max_concurrency):
+        batch = source_records[batch_start : batch_start + max_concurrency]
+        results.extend(
+            await asyncio.gather(
+                *(orchestrator.evaluate_candidate(record) for record in batch)
+            )
+        )
 
     repository = JSONLRepository(output_path, enable_locking=False)
     repository.overwrite(

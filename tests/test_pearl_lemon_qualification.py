@@ -276,6 +276,58 @@ def test_run_qualification_reads_enriched_jsonl_and_writes_all_outcomes(tmp_path
     ]
 
 
+def test_run_qualification_evaluates_in_bounded_ordered_batches(
+    tmp_path, monkeypatch
+):
+    input_path = tmp_path / "enriched_records.jsonl"
+    output_path = tmp_path / "qualified_records.jsonl"
+    records = []
+    for index in range(4):
+        record = qualified_account()
+        record["company_id"] = f"company-{index}"
+        records.append(record)
+    input_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records),
+        encoding="utf-8",
+    )
+
+    original_evaluate = PearlLemonQualificationOrchestrator.evaluate_candidate
+    active = 0
+    max_active = 0
+
+    async def tracked_evaluate(self, record):
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        try:
+            await asyncio.sleep(0.01)
+            return await original_evaluate(self, record)
+        finally:
+            active -= 1
+
+    monkeypatch.setattr(
+        PearlLemonQualificationOrchestrator,
+        "evaluate_candidate",
+        tracked_evaluate,
+    )
+
+    results = asyncio.run(
+        run_qualification(
+            input_path,
+            output_path,
+            max_concurrency=2,
+        )
+    )
+
+    assert max_active == 2
+    assert [result.company_id for result in results] == [
+        "company-0",
+        "company-1",
+        "company-2",
+        "company-3",
+    ]
+
+
 def test_run_qualification_rejects_malformed_input_jsonl(tmp_path):
     input_path = tmp_path / "enriched_records.jsonl"
     input_path.write_text("{}\nnot-json\n", encoding="utf-8")

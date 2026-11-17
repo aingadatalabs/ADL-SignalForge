@@ -533,7 +533,7 @@ ADL-SignalForge/
 ├── .github/workflows/       CI/CD automation
 ├── agencies/
 │   ├── adl/                 Implemented ADL pipeline and private processing packages
-│   ├── pearl_lemon/         Pipeline entrypoint and agency configuration scaffolds
+│   ├── pearl_lemon/         Implemented prospect discovery-to-qualification pipeline
 │   ├── cience/              Pipeline entrypoint and agency configuration scaffolds
 │   ├── fiteat/              Pipeline entrypoint and agency configuration scaffolds
 │   └── elimuflow/           Pipeline entrypoint and agency configuration scaffolds
@@ -554,7 +554,7 @@ ADL-SignalForge/
 └── render.yaml
 ```
 
-ADL has the implemented pipeline. Pearl Lemon, CIENCE, FitEat, and ElimuFlow have matching agency configuration and package scaffolds; their pipeline entrypoints intentionally report that workflows are not configured yet. Root `enrichment/` and `qualification/` expose shared contracts, while each agency owns its pipeline-specific settings and engine packages. Existing imports from `ADL` and `storage.duckdb_client` remain available as compatibility aliases.
+ADL and Pearl Lemon have implemented pipelines. Pearl Lemon runs discovery, normalization, identity resolution and deduplication, enrichment, and qualification. CIENCE, FitEat, and ElimuFlow remain agency configuration and package scaffolds whose pipeline workflows are not configured yet. Root `enrichment/` and `qualification/` expose shared contracts, while each agency owns its pipeline-specific settings and engine packages. Existing imports from `ADL` and `storage.duckdb_client` remain available as compatibility aliases.
 
 ### Persistence and execution
 
@@ -572,9 +572,9 @@ Current engineering work includes:
 
 ### Enrichment and qualification
 
-The wider application is being developed around reusable enrichment contracts, company identity resolution and configurable qualification.
+Pearl Lemon includes web and Hunter enrichment, company identity resolution, deterministic qualification rules, scoring, tiering, and orchestration. Hunter enrichment requires `HUNTER_API_KEY`; the pipeline does not run Hunter enrichment without it.
 
-The initial qualification design separates deterministic rules, scoring, tiering and orchestration.
+Qualification results preserve eligible, pending, and disqualified outcomes with their evidence and explanations.
 
 ### Delivery and notifications
 
@@ -599,6 +599,19 @@ uvicorn main:app --reload
 ```
 
 `main.py` loads the root `.env` file when the app is imported. Keep `.env` private and use `uvicorn main:app` to start the API. Run the implemented agency pipeline with `python main.py --agency adl`; `SIGNALFORGE_AGENCY=adl` can be used instead of the flag.
+
+#### Pearl Lemon pipeline
+
+Run the Pearl Lemon pipeline from the repository root:
+
+```bash
+export HUNTER_API_KEY="<your Hunter API key>"
+python -m agencies.pearl_lemon.run_pipeline
+```
+
+The Hunter key must be available in the process environment; the standalone pipeline command does not load `.env`. Keep the key in local or managed secret configuration and out of source control.
+
+Each run writes stage snapshots beneath `.runs/<run_id>` within the corresponding stage directory. A run that discovers no records is reported as partial with a `NoRecordsDiscovered` error and does not replace the stable qualified-leads snapshot. Partial or failed runs exit with a non-zero status.
 
 Proxy use is disabled unless `SIGNALFORGE_PROXY_PROVIDER` is set to `oxylabs` or `nodemaven`. Configure the selected provider's URL with `OXYLABS_PROXY_URL` or `NODEMAVEN_PROXY_URL`; credentials belong in environment configuration, not source control.
 
@@ -630,13 +643,13 @@ The following distinction is important: reviewing a component, defining its cont
 |---|---|
 | ADL-first commercial direction | Defined |
 | Initial agency ICP | Defined |
-| Discovery and normalization | Architecture established; implementation under continued review |
-| Entity resolution | Implementation and reliability review |
+| Discovery and normalization | Pearl Lemon implementation present; end-to-end operating validation ongoing |
+| Entity resolution | Pearl Lemon implementation present; reliability validation ongoing |
 | Shared enrichment contracts | Defined and reviewed |
-| Enrichment components | Architecture and code review |
-| Qualification rules | Designed and reviewed |
-| Scoring and tiering | Initial policies defined; validation required |
-| Pipeline orchestration | Implementation reviewed; contract and recovery work remains |
+| Enrichment components | Pearl Lemon web and Hunter enrichment implemented; Hunter key required; operational validation ongoing |
+| Qualification rules | Pearl Lemon deterministic eligibility and qualification orchestration implemented; policy validation ongoing |
+| Scoring and tiering | Pearl Lemon scoring and tier configuration implemented; threshold validation ongoing |
+| Pipeline orchestration | Pearl Lemon runner implemented; live execution and recovery validation ongoing |
 | JSONL persistence | Implementation reviewed; failure and shutdown issues identified |
 | DuckDB and repository | Implementation reviewed; integration verification required |
 | Parquet publication | Implementation reviewed; end-to-end verification required |

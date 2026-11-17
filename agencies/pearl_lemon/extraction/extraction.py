@@ -77,35 +77,56 @@ class PearlLemonExtractionEngine:
         )
         return queries
 
-    async def extract_raw_leads(self, max_results_per_query: int = 10) -> list[RawRecord]:
+    async def extract_raw_leads(
+        self, max_results_per_query: int = 10, max_concurrency: int = 4
+    ) -> list[RawRecord]:
         """Search and crawl ICP-derived targets, preserving source evidence per record."""
         if max_results_per_query < 1:
             raise ValueError("max_results_per_query must be at least 1")
+        if max_concurrency < 1:
+            raise ValueError("max_concurrency must be at least 1")
 
         self.failures = []
         queries = await self.generate_search_queries()
         raw_leads: list[RawRecord] = []
         logger.info("Starting Pearl Lemon extraction", extra={"query_count": len(queries)})
+        semaphore = asyncio.Semaphore(max_concurrency)
 
-        for query in queries:
-            try:
-                results = await asyncio.to_thread(
-                    self.surf_client.search,
-                    query,
-                    recency="month",
-                )
-                if not isinstance(results, list):
-                    raise TypeError(
-                        f"Frankensurf search returned {type(results).__name__}, expected list"
+        async def extract_query(
+            query: str,
+        ) -> tuple[list[RawRecord], list[dict[str, str]]]:
+            async with semaphore:
+                try:
+                    results = await asyncio.to_thread(
+                        self.surf_client.search,
+                        query,
+                        recency="month",
                     )
-                records = await self._extract_query_results(
-                    query, results[:max_results_per_query]
-                )
-                raw_leads.extend(records)
-            except Exception as exc:
-                failure = {"query": query, "error": f"{type(exc).__name__}: {exc}"}
-                self.failures.append(failure)
-                logger.exception("Pearl Lemon discovery query failed", extra=failure)
+                    if not isinstance(results, list):
+                        raise TypeError(
+                            "Frankensurf search returned "
+                            f"{type(results).__name__}, expected list"
+                        )
+                    records, failures = await self._extract_query_results(
+                        query, results[:max_results_per_query]
+                    )
+                    return records, failures
+                except Exception as exc:
+                    failure = {
+                        "query": query,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                    logger.exception(
+                        "Pearl Lemon discovery query failed", extra=failure
+                    )
+                    return [], [failure]
+
+        query_results = await asyncio.gather(
+            *(extract_query(query) for query in queries)
+        )
+        for records, failures in query_results:
+            raw_leads.extend(records)
+            self.failures.extend(failures)
 
         if self.failures:
             raise ExtractionRunError(
@@ -120,7 +141,8 @@ class PearlLemonExtractionEngine:
 
     async def _extract_query_results(
         self, query: str, search_results: Sequence[Any]
-    ) -> list[RawRecord]:
+    ) -> tuple[list[RawRecord], list[dict[str, str]]]:
+        failures: list[dict[str, str]] = []
         candidates = [
             (index, result, self._result_url(result))
             for index, result in enumerate(search_results)
@@ -140,7 +162,7 @@ class PearlLemonExtractionEngine:
                     "query": query,
                     "error": f"{type(exc).__name__}: crawl failed: {exc}",
                 }
-                self.failures.append(failure)
+                failures.append(failure)
                 logger.exception("Pearl Lemon result crawl failed", extra=failure)
                 pages = []
 
@@ -151,7 +173,7 @@ class PearlLemonExtractionEngine:
         urls_by_result = {
             result_index: url for result_index, _, url in candidates
         }
-        return [
+        records = [
             self._build_record(
                 query,
                 result_index,
@@ -162,6 +184,7 @@ class PearlLemonExtractionEngine:
             for result_index, result in enumerate(search_results)
             if isinstance(result, Mapping)
         ]
+        return records, failures
 
     @classmethod
     def _build_record(
@@ -343,15 +366,20 @@ class PearlLemonExtractionEngine:
 async def run_extraction(
     max_results_per_query: int = 10,
     *,
+    max_concurrency: int = 4,
     icp: PearlLemonICP = DEFAULT_PEARL_LEMON_ICP,
     client: Any | None = None,
     output_path: str | Path = DEFAULT_RAW_RECORDS_PATH,
     pipeline_context: Mapping[str, Any] | None = None,
 ) -> list[RawRecord]:
     """Run discovery and append successful raw records to the extraction JSONL file."""
+    if max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
     engine = PearlLemonExtractionEngine(icp=icp, client=client)
     try:
-        records = await engine.extract_raw_leads(max_results_per_query)
+        records = await engine.extract_raw_leads(
+            max_results_per_query, max_concurrency=max_concurrency
+        )
     except ExtractionRunError as exc:
         partial_records = _attach_pipeline_context(
             exc.partial_results, pipeline_context
@@ -375,14 +403,11 @@ def _attach_pipeline_context(
 
 def _write_raw_records(records: Sequence[RawRecord], output_path: str | Path) -> None:
     """Append raw extraction snapshots without applying normalization."""
-    if records:
-        lines = [
-            json.dumps(record, ensure_ascii=False) + "\n"
-            for record in records
-        ]
-        path = Path(output_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as output_file:
+    lines = [json.dumps(record, ensure_ascii=False) + "\n" for record in records]
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as output_file:
+        if lines:
             output_file.writelines(lines)
 
 

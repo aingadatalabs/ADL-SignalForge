@@ -163,6 +163,27 @@ class EntityResolver:
 
         resolved_entities: List[Dict[str, Any]] = []
         entity_index: List[Dict[str, Any]] = []
+        token_index: Dict[str, Set[int]] = {}
+        length_index: Dict[int, Set[int]] = {}
+        tokenless_indices: Set[int] = set()
+
+        def index_entity(entity: Dict[str, Any]) -> None:
+            name = entity.get("agency_name", "")
+            folded_name = name.casefold()
+            tokens = self._extract_tokens(name)
+            index = len(entity_index)
+            entity_index.append(
+                {
+                    "entity": entity,
+                    "folded_name": folded_name,
+                    "tokens": tokens,
+                }
+            )
+            length_index.setdefault(len(folded_name), set()).add(index)
+            if not tokens:
+                tokenless_indices.add(index)
+            for token in tokens:
+                token_index.setdefault(token, set()).add(index)
 
         # Step 2: Conservative Domain Clustering with Conflict Evaluation
         for domain, group in domain_clusters.items():
@@ -193,21 +214,12 @@ class EntityResolver:
                 for cluster in sub_clusters:
                     merged = self._merge_candidate_cluster(cluster)
                     resolved_entities.append(merged)
-                    name = merged.get("agency_name", "")
-                    entity_index.append({
-                        "entity": merged,
-                        "folded_name": name.casefold(),
-                        "tokens": self._extract_tokens(name)
-                    })
+                    index_entity(merged)
                 continue
 
             name = merged.get("agency_name", "")
             resolved_entities.append(merged)
-            entity_index.append({
-                "entity": merged,
-                "folded_name": name.casefold(),
-                "tokens": self._extract_tokens(name)
-            })
+            index_entity(merged)
 
         # Step 3: Blocked fuzzy matching for domainless or unmatched items
         for cand in domainless_candidates:
@@ -222,12 +234,22 @@ class EntityResolver:
             best_match_idx = -1
             highest_score = 0.0
 
-            for idx, indexed in enumerate(entity_index):
-                # Token blocking check with fallback for short names
-                if cand_tokens and indexed["tokens"] and not (cand_tokens & indexed["tokens"]):
-                    if abs(len(folded_name) - len(indexed["folded_name"])) > 3:
-                        continue
+            if cand_tokens:
+                candidate_indices = set(tokenless_indices)
+                for token in cand_tokens:
+                    candidate_indices.update(token_index.get(token, set()))
+                for candidate_length in range(
+                    max(0, len(folded_name) - 3), len(folded_name) + 4
+                ):
+                    candidate_indices.update(
+                        length_index.get(candidate_length, set())
+                    )
+                indices_to_compare = sorted(candidate_indices)
+            else:
+                indices_to_compare = range(len(entity_index))
 
+            for idx in indices_to_compare:
+                indexed = entity_index[idx]
                 score = self._compute_string_similarity(folded_name, indexed["folded_name"], self.similarity_threshold)
                 if score > highest_score:
                     highest_score = score
@@ -251,10 +273,6 @@ class EntityResolver:
             if not matched:
                 new_merged = self._merge_candidate_cluster([cand])
                 resolved_entities.append(new_merged)
-                entity_index.append({
-                    "entity": new_merged,
-                    "folded_name": folded_name,
-                    "tokens": cand_tokens
-                })
+                index_entity(new_merged)
 
         return resolved_entities
