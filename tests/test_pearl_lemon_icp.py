@@ -213,7 +213,7 @@ def test_team_size_ranges_preserve_uncertainty(value, expected_status):
     if expected_status == "out_of_range":
         assert assessment.status == "disqualified"
     elif expected_status in {"potentially_in_range", "unknown"}:
-        assert assessment.status == "pending"
+        assert assessment.status == "eligible"
 
 
 def test_blocked_keywords_are_enforced_from_account_classification_fields():

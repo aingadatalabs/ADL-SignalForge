@@ -44,7 +44,7 @@ DEFAULT_ENRICHED_RECORDS_PATH = (
     Path(__file__).parent / "enrichment_engine" / "enriched_records.jsonl"
 )
 HUNTER_DOMAIN_SEARCH_URL = "https://api.hunter.io/v2/domain-search"
-MAX_CRAWL_URLS = 12
+MAX_CRAWL_URLS = 5
 MAX_SEARCH_RESULTS = 5
 MAX_HUNTER_ATTEMPTS = 3
 MAX_EVIDENCE_SNIPPET_LENGTH = 500
@@ -53,23 +53,20 @@ CRAWL_PATHS = (
     "/about",
     "/about-us",
     "/team",
-    "/our-team",
-    "/leadership",
-    "/careers",
-    "/jobs",
-    "/news",
 )
 EMAIL_PATTERN = re.compile(
     r"[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9.-]*[A-Z0-9])?\.[A-Z]{2,}",
     re.IGNORECASE,
 )
 HEADCOUNT_RANGE_PATTERN = re.compile(
-    r"\b(\d[\d,]*)\s*[-–]\s*(\d[\d,]*)\s+"
-    r"(?:employees|team members|people)\b",
+    r"(?:\b(\d[\d,]*)\s*[-–]\s*(\d[\d,]*)\s*(?:\+\s*)?"
+    r"(?:employees|team members|team|staff|people)\b"
+    r"|\b(?:team of\s+|over\s+|more than\s+)?(\d[\d,]*)\+\s*"
+    r"(?:employees|team members|team|staff|people)\b)",
     re.IGNORECASE,
 )
 HEADCOUNT_EXACT_PATTERN = re.compile(
-    r"\b(\d[\d,]*)\s+(?:employees|team members|people)\b",
+    r"\b(\d[\d,]*)\s+(?:employees|team members|staff)\b",
     re.IGNORECASE,
 )
 BUSINESS_MODEL_PATTERN = re.compile(
@@ -81,6 +78,84 @@ HEADQUARTERS_PATTERN = re.compile(
     r"([A-Z][A-Za-z .,'-]{1,70}?)(?=\s*(?:[.;]|$))",
     re.IGNORECASE,
 )
+COUNTRY_TEXT_PATTERN = re.compile(
+    r"\b(United States(?: of America)?|USA|U\.S\.A\.|U\.S\.|"
+    r"United Kingdom|Great Britain|England|Scotland|Wales|"
+    r"Canada|Australia|Germany|France|Netherlands|Ireland|Switzerland)\b",
+    re.IGNORECASE,
+)
+US_STATE_ZIP_PATTERN = re.compile(
+    r"\b(?:Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|"
+    r"Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|"
+    r"Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|"
+    r"Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|"
+    r"North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|"
+    r"South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|"
+    r"Wisconsin|Wyoming|AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|"
+    r"MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|"
+    r"VT|VA|WA|WV|WI|WY)\s+\d{5}(?:-\d{4})?\b"
+)
+COUNTRY_TO_ISO2: dict[str, str] = {
+    "united states": "US",
+    "united states of america": "US",
+    "usa": "US",
+    "u.s.a.": "US",
+    "u.s.": "US",
+    "us": "US",
+    "united kingdom": "GB",
+    "great britain": "GB",
+    "england": "GB",
+    "scotland": "GB",
+    "wales": "GB",
+    "northern ireland": "GB",
+    "uk": "GB",
+    "gb": "GB",
+    "canada": "CA",
+    "ca": "CA",
+    "australia": "AU",
+    "au": "AU",
+    "germany": "DE",
+    "de": "DE",
+    "france": "FR",
+    "fr": "FR",
+    "netherlands": "NL",
+    "nl": "NL",
+    "ireland": "IE",
+    "ie": "IE",
+    "switzerland": "CH",
+    "ch": "CH",
+}
+CCTLD_TO_ISO2: tuple[tuple[str, str], ...] = (
+    (".co.uk", "GB"),
+    (".org.uk", "GB"),
+    (".uk", "GB"),
+    (".ca", "CA"),
+    (".com.au", "AU"),
+    (".au", "AU"),
+    (".de", "DE"),
+    (".fr", "FR"),
+    (".nl", "NL"),
+    (".ie", "IE"),
+    (".ch", "CH"),
+)
+
+
+def _infer_country_code(location: str | None = None, domain: str | None = None) -> str | None:
+    if location:
+        norm = location.strip().casefold()
+        if norm in COUNTRY_TO_ISO2:
+            return COUNTRY_TO_ISO2[norm]
+        for alias, code in COUNTRY_TO_ISO2.items():
+            if len(alias) > 2 and re.search(rf"\b{re.escape(alias)}\b", norm):
+                return code
+        if US_STATE_ZIP_PATTERN.search(location):
+            return "US"
+    if domain:
+        host = domain.strip().casefold().rstrip(".")
+        for suffix, code in CCTLD_TO_ISO2:
+            if host.endswith(suffix):
+                return code
+    return None
 
 
 class EnrichmentProviderError(RuntimeError):
@@ -105,14 +180,10 @@ class HunterDomainSearchClient:
         self._icp = icp
 
     async def search_domain(self, domain: str) -> dict[str, Any]:
+        clean_domain = domain.strip().casefold().removeprefix("www.")
         params = {
-            "domain": domain,
+            "domain": clean_domain,
             "limit": 10,
-            "provenance": "found",
-            "verification_status": "valid",
-            "decision_maker": "true",
-            "job_titles": ",".join(sorted(self._icp.target_job_titles)),
-            "required_field": "full_name,position",
         }
         for attempt in range(MAX_HUNTER_ATTEMPTS):
             try:
@@ -296,6 +367,14 @@ class PearlLemonEnrichmentEngine:
                 )
 
         self._apply_web_evidence(record, search_evidence, pages)
+        hunter_headcount = hunter_data.get("headcount")
+        if (
+            isinstance(hunter_headcount, str)
+            and hunter_headcount.strip()
+            and "employee_count" not in record
+            and "team_size_text" not in record
+        ):
+            record["team_size_text"] = hunter_headcount.strip()
         hunter_contacts = self._hunter_contacts(hunter_data)
         website_contacts = self._website_contacts(pages, domain)
         contacts = self._merge_contacts(website_contacts, hunter_contacts)
@@ -579,40 +658,80 @@ class PearlLemonEnrichmentEngine:
                     "text": match.group(),
                 }
 
-        if "employee_count" not in record:
+        if "employee_count" not in record and "team_size_text" not in record:
             for source_url, text in sources:
                 range_match = HEADCOUNT_RANGE_PATTERN.search(text)
-                exact_match = HEADCOUNT_EXACT_PATTERN.search(text)
                 if range_match:
-                    record["team_size_text"] = range_match.group()
+                    record["team_size_text"] = range_match.group().strip()
                     record["employee_count_evidence"] = {
                         "source_url": source_url,
-                        "text": range_match.group(),
+                        "text": range_match.group().strip(),
                     }
                     break
-                if exact_match:
-                    record["employee_count"] = int(
-                        exact_match.group(1).replace(",", "")
-                    )
-                    record["employee_count_evidence"] = {
-                        "source_url": source_url,
-                        "text": exact_match.group(),
-                    }
-                    break
+            if "team_size_text" not in record:
+                for source_url, text in sources:
+                    exact_match = HEADCOUNT_EXACT_PATTERN.search(text)
+                    if exact_match:
+                        record["employee_count"] = int(
+                            exact_match.group(1).replace(",", "")
+                        )
+                        record["employee_count_evidence"] = {
+                            "source_url": source_url,
+                            "text": exact_match.group().strip(),
+                        }
+                        break
+
+        domain = str(record.get("canonical_domain") or record.get("domain") or "")
+        if not record.get("country_code") and record.get("country"):
+            inferred = _infer_country_code(str(record["country"]), domain)
+            if inferred:
+                record["country_code"] = inferred
 
         if not record.get("country_code") and not record.get("country"):
             for source_url, text in sources:
                 location_match = HEADQUARTERS_PATTERN.search(text)
                 if location_match:
                     location = location_match.group(1).strip(" ,.")
-                    if self.icp.matches_geography([location]):
+                    code = _infer_country_code(location, domain)
+                    if code or self.icp.matches_geography([location]):
                         record["headquarters_location"] = location
                         record["country"] = location
+                        if code:
+                            record["country_code"] = code
                         record["headquarters_evidence"] = {
                             "source_url": source_url,
                             "text": location_match.group(),
                         }
                         break
+
+        if not record.get("country_code"):
+            for source_url, text in sources:
+                country_match = COUNTRY_TEXT_PATTERN.search(text)
+                if country_match:
+                    matched_country = country_match.group(1).strip(" ,.")
+                    code = _infer_country_code(matched_country, domain)
+                    if code:
+                        record["country"] = record.get("country") or matched_country
+                        record["country_code"] = code
+                        record.setdefault(
+                            "headquarters_evidence",
+                            {"source_url": source_url, "text": country_match.group()},
+                        )
+                        break
+                zip_match = US_STATE_ZIP_PATTERN.search(text)
+                if zip_match:
+                    record["country"] = record.get("country") or "United States"
+                    record["country_code"] = "US"
+                    record.setdefault(
+                        "headquarters_evidence",
+                        {"source_url": source_url, "text": zip_match.group()},
+                    )
+                    break
+
+        if not record.get("country_code"):
+            tld_code = _infer_country_code(None, domain)
+            if tld_code:
+                record["country_code"] = tld_code
 
         if not record.get("business_activity_evidence"):
             activity_source = next(
@@ -767,6 +886,10 @@ class PearlLemonEnrichmentEngine:
             syntax_valid = validate_syntax(email)
             domain_matches = self._email_matches_domain(email, domain)
             observed = contact.get("provenance") == "found"
+            hunter_verified = (
+                contact.get("source_type") == "hunter_domain_search"
+                and contact.get("verification_status") == "valid"
+            )
             hunter_status_valid = (
                 contact.get("source_type") != "hunter_domain_search"
                 or contact.get("verification_status") == "valid"
@@ -774,11 +897,16 @@ class PearlLemonEnrichmentEngine:
             verified = bool(
                 syntax_valid
                 and domain_matches
-                and observed
+                and (observed or hunter_verified)
                 and has_mail_route
                 and hunter_status_valid
             )
             source_urls = contact.get("source_urls", [])
+            evidence_level = (
+                "observed"
+                if observed
+                else ("hunter_verified" if hunter_verified else "unverified")
+            )
             verified_contacts.append(
                 {
                     **contact,
@@ -786,7 +914,7 @@ class PearlLemonEnrichmentEngine:
                     "syntax_valid": syntax_valid,
                     "domain_mail_status": mail_status,
                     "mx_hosts": mx_hosts,
-                    "evidence_level": "observed" if observed else "unverified",
+                    "evidence_level": evidence_level,
                     "verified": verified,
                 }
             )
@@ -836,7 +964,7 @@ class PearlLemonEnrichmentEngine:
             title_match = self.icp.evaluate(
                 {"decision_makers": [{"full_name": full_name, "title": title}]}
             ).matched_job_titles
-            if not title_match:
+            if not title_match and contact.get("decision_maker") is not True:
                 continue
             key = (full_name.casefold(), title.casefold())
             if key in seen:

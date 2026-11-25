@@ -1,9 +1,4 @@
-"""Discover and capture raw, evidence-backed Pearl Lemon company candidates.
-
-Extraction preserves observations and provenance; normalization, entity resolution,
-and ICP qualification belong to subsequent pipeline stages.
-"""
-
+#Discover and capture raw, evidence-backed Pearl Lemon company candidates.
 import asyncio
 import json
 import logging
@@ -18,6 +13,36 @@ logger = logging.getLogger(__name__)
 
 RawRecord = dict[str, Any]
 DEFAULT_RAW_RECORDS_PATH = Path(__file__).with_name("raw_records.jsonl")
+BLOCKLISTED_DOMAINS = frozenset(
+    {
+        "wikipedia.org",
+        "britannica.com",
+        "f6s.com",
+        "builtin.com",
+        "builtinlondon.uk",
+        "builtinmelbourne.com",
+        "clutch.co",
+        "g2.com",
+        "capterra.com",
+        "crunchbase.com",
+        "linkedin.com",
+        "glassdoor.com",
+        "indeed.com",
+        "forbes.com",
+        "medium.com",
+        "revenuebase.ai",
+        "uglybaby.app",
+        "zoominfo.com",
+        "apollo.io",
+        "pitchbook.com",
+        "tracxn.com",
+        "dealroom.co",
+        "goodfirms.co",
+        "designrush.com",
+        "sortlist.com",
+        "trustpilot.com",
+    }
+)
 
 
 class ExtractionRunError(RuntimeError):
@@ -64,14 +89,18 @@ class PearlLemonExtractionEngine:
         geographies = sorted(self.icp.target_geographies)
         industries = sorted(self.icp.target_industries)
         queries = [
-            f'established B2B "{industry}" companies in "{geography}" '
-            f"{self.icp.min_team_size}-{self.icp.max_team_size} employees"
+            f'"{industry}" "{geography}" '
+            '("about us" OR "our customers" OR "book a demo" OR "request a demo") '
+            "-top -best -list -directory -wikipedia"
             for industry in industries
             for geography in geographies
         ]
         queries.extend(
-            f'"{industry}" companies in "{geography}" '
-            '"sales development" OR "sales team expansion"'
+            (
+                f'"{industry}" "{geography}" '
+                '(solutions OR product OR platform OR customers OR services) '
+                "-top -best -list -directory -wikipedia"
+            )
             for industry in industries
             for geography in geographies
         )
@@ -100,7 +129,6 @@ class PearlLemonExtractionEngine:
                     results = await asyncio.to_thread(
                         self.surf_client.search,
                         query,
-                        recency="month",
                     )
                     if not isinstance(results, list):
                         raise TypeError(
@@ -108,7 +136,7 @@ class PearlLemonExtractionEngine:
                             f"{type(results).__name__}, expected list"
                         )
                     records, failures = await self._extract_query_results(
-                        query, results[:max_results_per_query]
+                        query, results, max_results=max_results_per_query
                     )
                     return records, failures
                 except Exception as exc:
@@ -140,13 +168,24 @@ class PearlLemonExtractionEngine:
         return raw_leads
 
     async def _extract_query_results(
-        self, query: str, search_results: Sequence[Any]
+        self,
+        query: str,
+        search_results: Sequence[Any],
+        *,
+        max_results: int,
     ) -> tuple[list[RawRecord], list[dict[str, str]]]:
         failures: list[dict[str, str]] = []
-        candidates = [
-            (index, result, self._result_url(result))
+        eligible_results = [
+            (index, result)
             for index, result in enumerate(search_results)
-            if isinstance(result, Mapping) and self._result_url(result)
+            if isinstance(result, Mapping)
+            and self._result_domain(result)
+            and not self._is_blocklisted_result(result)
+        ][:max_results]
+        candidates = [
+            (index, result, source_url)
+            for index, result in eligible_results
+            if (source_url := self._result_url(result))
         ]
         pages: Sequence[Any] = []
         if candidates:
@@ -181,8 +220,7 @@ class PearlLemonExtractionEngine:
                 urls_by_result.get(result_index),
                 pages_by_result.get(result_index),
             )
-            for result_index, result in enumerate(search_results)
-            if isinstance(result, Mapping)
+            for result_index, result in eligible_results
         ]
         return records, failures
 
@@ -234,11 +272,8 @@ class PearlLemonExtractionEngine:
             "company_name": company_name,
             "agency_name": agency_name,
             "name_confidence": "high" if company_name else "low",
-            "domain": cls._first_value(result, "domain", "canonical_domain")
-            or cls._domain_from_url(source_url),
-            "canonical_domain": cls._first_value(
-                result, "canonical_domain", "domain"
-            )
+            "domain": cls._result_domain(result) or cls._domain_from_url(source_url),
+            "canonical_domain": cls._result_domain(result)
             or cls._domain_from_url(source_url),
             "website": cls._first_value(result, "website") or source_url,
             "website_title": page_title,
@@ -345,6 +380,45 @@ class PearlLemonExtractionEngine:
             return None
         hostname = hostname.casefold().rstrip(".")
         return hostname[4:] if hostname.startswith("www.") else hostname
+
+    @classmethod
+    def _result_domain(cls, result: Mapping[str, Any]) -> str | None:
+        for key in ("domain", "canonical_domain"):
+            value = cls._first_value(result, key)
+            if value:
+                domain = cls._domain_from_url(value)
+                if domain:
+                    return domain
+                parsed = urlsplit(f"//{value}")
+                if parsed.hostname:
+                    hostname = parsed.hostname.casefold().rstrip(".")
+                    return hostname[4:] if hostname.startswith("www.") else hostname
+        return cls._domain_from_url(cls._result_url(result))
+
+    @classmethod
+    def _is_blocklisted_result(cls, result: Mapping[str, Any]) -> bool:
+        domains = [
+            cls._domain_from_url(cls._result_url(result)),
+            cls._result_domain_field(result, "domain"),
+            cls._result_domain_field(result, "canonical_domain"),
+        ]
+        return any(
+            domain
+            and any(
+                domain == blocked_domain or domain.endswith(f".{blocked_domain}")
+                for blocked_domain in BLOCKLISTED_DOMAINS
+            )
+            for domain in domains
+        )
+
+    @classmethod
+    def _result_domain_field(
+        cls, result: Mapping[str, Any], field: str
+    ) -> str | None:
+        value = cls._first_value(result, field)
+        if not value:
+            return None
+        return cls._domain_from_url(value) or cls._domain_from_url(f"https://{value}")
 
     @staticmethod
     def _first_value(result: Mapping[str, Any], *keys: str) -> str | None:

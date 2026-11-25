@@ -8,6 +8,7 @@ from agencies.pearl_lemon.enrichment import (
     DEFAULT_ENRICHED_RECORDS_PATH,
     HunterDomainSearchClient,
     PearlLemonEnrichmentEngine,
+    _infer_country_code,
     run_enrichment,
 )
 
@@ -92,6 +93,57 @@ def test_default_enriched_records_path_is_under_enrichment_engine():
     assert DEFAULT_ENRICHED_RECORDS_PATH.name == "enriched_records.jsonl"
 
 
+@pytest.mark.parametrize(
+    "location",
+    ["Austin, TX 78701", "Austin, Texas 78701", "Austin, Texas 78701-1234"],
+)
+def test_us_state_and_zip_locations_infer_us(location):
+    assert _infer_country_code(location) == "US"
+
+
+@pytest.mark.parametrize(
+    ("domain", "country_code"),
+    [
+        ("example.co.uk", "GB"),
+        ("example.ca", "CA"),
+        ("example.com.au", "AU"),
+    ],
+)
+def test_country_code_is_inferred_from_common_cctld(domain, country_code):
+    assert _infer_country_code(domain=domain) == country_code
+
+
+def test_hunter_decision_maker_flag_keeps_nonmatching_title():
+    engine = PearlLemonEnrichmentEngine(
+        hunter_api_key="test-key-only",
+        frankensurf_client=FakeFrankensurf(),
+    )
+    hunter_contacts = engine._hunter_contacts(
+        {
+            "emails": [
+                {
+                    "value": "jane@example.com",
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "position": "Office Wizard",
+                    "decision_maker": True,
+                    "sources": [{"uri": "https://example.com/team"}],
+                }
+            ]
+        }
+    )
+
+    assert not engine.icp.evaluate(
+        {"decision_makers": [{"full_name": "Jane Doe", "title": "Office Wizard"}]}
+    ).matched_job_titles
+    decision_makers = engine._decision_makers(
+        None, hunter_contacts, [], "example.com"
+    )
+
+    assert decision_makers[0]["full_name"] == "Jane Doe"
+    assert decision_makers[0]["title"] == "Office Wizard"
+
+
 def test_enrichment_uses_icp_web_and_hunter_evidence_and_persists(tmp_path):
     requests: list[httpx.Request] = []
 
@@ -135,8 +187,7 @@ def test_enrichment_uses_icp_web_and_hunter_evidence_and_persists(tmp_path):
     assert len(requests) == 1
     assert requests[0].headers["Authorization"] == "Bearer test-key-only"
     assert "api_key" not in requests[0].url.params
-    assert requests[0].url.params["provenance"] == "found"
-    assert requests[0].url.params["verification_status"] == "valid"
+    assert dict(requests[0].url.params) == {"domain": "example.com", "limit": "10"}
     output_path = tmp_path / "enrichment_engine" / "enriched_records.jsonl"
     assert json.loads(output_path.read_text(encoding="utf-8")) == record
     assert "test-key-only" not in output_path.read_text(encoding="utf-8")
@@ -144,10 +195,12 @@ def test_enrichment_uses_icp_web_and_hunter_evidence_and_persists(tmp_path):
 
 def test_hunter_client_retries_rate_limited_requests():
     call_count = 0
+    requests: list[httpx.Request] = []
 
-    def handler(_: httpx.Request) -> httpx.Response:
+    def handler(request: httpx.Request) -> httpx.Response:
         nonlocal call_count
         call_count += 1
+        requests.append(request)
         if call_count == 1:
             return httpx.Response(429, headers={"Retry-After": "0"})
         return httpx.Response(200, json=HUNTER_RESPONSE)
@@ -155,12 +208,13 @@ def test_hunter_client_retries_rate_limited_requests():
     async def execute():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             hunter = HunterDomainSearchClient("test-key-only", client)
-            return await hunter.search_domain("example.com")
+            return await hunter.search_domain(" WWW.Example.com ")
 
     result = asyncio.run(execute())
 
     assert call_count == 2
     assert result["domain"] == "example.com"
+    assert dict(requests[-1].url.params) == {"domain": "example.com", "limit": "10"}
 
 
 def test_enrichment_requires_hunter_key(monkeypatch):

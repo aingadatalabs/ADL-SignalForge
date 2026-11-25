@@ -247,8 +247,8 @@ class DeterministicRuleEngine:
             checks.append(RuleCheck(
                 rule_id="R005",
                 rule_name="Team Size Bounds",
-                status="manual_review",
-                reason="Team size data missing.",
+                status="passed",
+                reason="Team size data unavailable; not treated as a blocker.",
             ))
 
         # Determine overall evaluation status

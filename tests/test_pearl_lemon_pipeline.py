@@ -1,7 +1,7 @@
+import logging
 import asyncio
 import json
 from pathlib import Path
-
 import pytest
 
 from agencies.pearl_lemon import run_pipeline as pipeline
@@ -16,7 +16,11 @@ def _write_jsonl(path, records):
     )
 
 
-def test_pipeline_runs_all_stages_and_propagates_lineage(tmp_path, monkeypatch):
+def test_pipeline_runs_all_stages_and_propagates_lineage(
+    tmp_path, monkeypatch, caplog
+):
+    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.INFO)
     raw_record = {
         "agency_name": "Example Software",
         "domain": "example.com",
@@ -94,6 +98,17 @@ def test_pipeline_runs_all_stages_and_propagates_lineage(tmp_path, monkeypatch):
     )
     assert result.context.run_id in result.outputs.raw_records
     assert result.context.run_id in result.outputs.qualified_leads
+    completion = next(
+        record
+        for record in caplog.records
+        if record.getMessage() == "Pearl Lemon pipeline finished"
+    )
+    assert completion.normalized == 1
+    assert completion.enriched == 1
+    assert completion.pending == 0
+    assert completion.disqualified == 0
+    assert completion.error_count == 0
+    assert completion.published_qualified_leads is True
 
 
 def test_pipeline_reports_extraction_partial_results_and_continues(
@@ -156,8 +171,13 @@ def test_pipeline_config_rejects_overlapping_paths_and_zero_similarity():
         pipeline.PearlLemonPipelineConfig(similarity_threshold=0)
 
 
-def test_pipeline_accepts_max_results_per_query_keyword(tmp_path, monkeypatch):
+def test_pipeline_accepts_max_results_per_query_keyword(
+    tmp_path, monkeypatch, caplog
+):
+    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.INFO)
     observed_limits = []
+    enrichment_calls = []
 
     async def empty_extraction(*, max_results_per_query, output_path, **_kwargs):
         observed_limits.append(max_results_per_query)
@@ -165,6 +185,7 @@ def test_pipeline_accepts_max_results_per_query_keyword(tmp_path, monkeypatch):
         return []
 
     async def empty_enrichment(*, output_path, **_kwargs):
+        enrichment_calls.append(output_path)
         _write_jsonl(output_path, [])
         return []
 
@@ -185,20 +206,38 @@ def test_pipeline_accepts_max_results_per_query_keyword(tmp_path, monkeypatch):
     assert result.status == "partial"
     assert result.metrics.discovered == 0
     assert result.errors[0].error_type == "NoRecordsDiscovered"
-    assert result.outputs.qualified_leads is not None
-    assert Path(result.outputs.qualified_leads).read_text(encoding="utf-8") == ""
+    raw_records_path = result.outputs.raw_records
+    assert raw_records_path is not None
+    assert Path(raw_records_path).read_text(encoding="utf-8") == ""
+    assert result.outputs.normalized_records is None
+    assert result.outputs.resolved_records is None
+    assert result.outputs.enriched_records is None
+    assert result.outputs.qualified_leads is None
     assert result.outputs.published_qualified_leads is None
     assert observed_limits == [1]
+    assert enrichment_calls == []
+    completion = next(
+        record
+        for record in caplog.records
+        if record.getMessage() == "Pearl Lemon pipeline finished"
+    )
+    assert completion.status == "partial"
+    assert completion.discovered == 0
+    assert completion.error_count == 1
+    assert completion.published_qualified_leads is False
 
 
 def test_empty_discovery_does_not_replace_published_qualified_leads(
     tmp_path, monkeypatch
 ):
+    enrichment_calls = []
+
     async def empty_extraction(*, output_path, **_kwargs):
         _write_jsonl(output_path, [])
         return []
 
     async def empty_enrichment(*, output_path, **_kwargs):
+        enrichment_calls.append(output_path)
         _write_jsonl(output_path, [])
         return []
 
@@ -220,6 +259,11 @@ def test_empty_discovery_does_not_replace_published_qualified_leads(
     assert config.qualified_output_path.read_text(encoding="utf-8") == (
         '{"existing":true}\n'
     )
+    assert result.outputs.normalized_records is None
+    assert result.outputs.resolved_records is None
+    assert result.outputs.enriched_records is None
+    assert result.outputs.qualified_leads is None
+    assert enrichment_calls == []
 
 
 def test_failed_run_does_not_report_preexisting_qualified_output(

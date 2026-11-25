@@ -146,6 +146,13 @@ class PearlLemonICP(QualificationConfig):
             "Managing Director",
             "Chief Revenue Officer",
             "VP of Sales",
+            "President",
+            "Owner",
+            "Principal",
+            "Partner",
+            "Director",
+            "Head of Marketing",
+            "Head of Sales",
             "CEO",
             "CMO",
             "VP Marketing",
@@ -402,7 +409,7 @@ class PearlLemonICP(QualificationConfig):
             industry_known
             and bool(geography_values)
             and is_b2b is not None
-            and team_size_status == "in_range"
+            and team_size_status in ("in_range", "potentially_in_range", "unknown")
         )
 
         if disqualification_reasons:

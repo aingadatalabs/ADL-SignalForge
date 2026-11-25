@@ -27,12 +27,13 @@ class FakeFrankensurf:
     def __init__(self, fail_on_intent_query: bool = False):
         self.fail_on_intent_query = fail_on_intent_query
         self.searched_queries: list[str] = []
+        self.search_options: list[dict[str, str]] = []
         self.crawled_urls: list[str] = []
 
-    def search(self, query: str, *, recency: str):
+    def search(self, query: str, **options: str):
         self.searched_queries.append(query)
-        assert recency == "month"
-        if self.fail_on_intent_query and "sales development" in query:
+        self.search_options.append(options)
+        if self.fail_on_intent_query and "solutions OR product" in query:
             raise RuntimeError("search unavailable")
         return [
             {
@@ -69,8 +70,16 @@ def test_search_queries_are_deterministic_and_use_icp_criteria():
     queries = asyncio.run(engine.generate_search_queries())
 
     assert queries == [
-        'established B2B "B2B SaaS" companies in "United States" 10-250 employees',
-        '"B2B SaaS" companies in "United States" "sales development" OR "sales team expansion"',
+        (
+            '"B2B SaaS" "United States" '
+            '("about us" OR "our customers" OR "book a demo" OR "request a demo") '
+            "-top -best -list -directory -wikipedia"
+        ),
+        (
+            '"B2B SaaS" "United States" '
+            "(solutions OR product OR platform OR customers OR services) "
+            "-top -best -list -directory -wikipedia"
+        ),
     ]
     assert all("startup" not in query.casefold() for query in queries)
 
@@ -81,9 +90,10 @@ def test_extraction_uses_observed_frankensurf_interface_and_preserves_unknowns()
 
     records = asyncio.run(engine.extract_raw_leads(max_results_per_query=2))
 
-    assert len(records) == 4
+    assert len(records) == 2
     assert client.searched_queries
-    assert client.crawled_urls
+    assert client.search_options == [{}, {}]
+    assert client.crawled_urls == ["https://example.com/about"] * 2
     record = records[0]
     assert record["company_name"] is None
     assert record["agency_name"] == "Example Software"
@@ -98,7 +108,38 @@ def test_extraction_uses_observed_frankensurf_interface_and_preserves_unknowns()
     assert record["crawl_result"]["pages"][0]["cleaned_text"] == FakePage.text
     assert record["extraction_metadata"]["source_query"]
     assert record["business_activity_evidence"] == "Workflow software for B2B teams."
-    assert records[1]["website_evidence_available"] is False
+
+
+def test_extraction_skips_directory_and_domainless_results_before_crawling():
+    class MixedResultsClient:
+        def __init__(self):
+            self.crawled_urls: list[str] = []
+
+        def search(self, _query: str):
+            return [
+                {
+                    "title": "Directory profile",
+                    "url": "https://company.revenuebase.ai/profile/acme",
+                },
+                {"title": "Directory profile", "url": "https://www.clutch.co/profile/acme"},
+                {"title": "No company domain", "url": "not-a-url"},
+                {"title": "Acme", "url": "https://acme.example/about"},
+                {"title": "Later company", "url": "https://later.example/about"},
+            ]
+
+        async def abatch(self, urls: list[str], *, links: bool):
+            assert links is True
+            self.crawled_urls.extend(urls)
+            return [FakePage() for _ in urls]
+
+    client = MixedResultsClient()
+    engine = PearlLemonExtractionEngine(icp=small_icp(), client=client)
+
+    records = asyncio.run(engine.extract_raw_leads(max_results_per_query=1))
+
+    assert len(records) == 2
+    assert all(record["domain"] == "acme.example" for record in records)
+    assert client.crawled_urls == ["https://acme.example/about"] * 2
 
 
 def test_extraction_runs_queries_with_a_bounded_concurrency():
@@ -108,8 +149,8 @@ def test_extraction_runs_queries_with_a_bounded_concurrency():
             self.max_active = 0
             self.lock = threading.Lock()
 
-        def search(self, _query: str, *, recency: str):
-            assert recency == "month"
+        def search(self, _query: str, **options: str):
+            assert options == {}
             with self.lock:
                 self.active += 1
                 self.max_active = max(self.max_active, self.active)

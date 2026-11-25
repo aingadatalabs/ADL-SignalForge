@@ -252,6 +252,27 @@ async def run_pipeline(
         has_progress = metrics.discovered > 0 or metrics.normalized > 0
         return make_result("partial" if has_progress else "failed")
 
+    def log_pipeline_finished(
+        status: Literal["completed", "partial", "failed"],
+    ) -> None:
+        logger.info(
+            "Pearl Lemon pipeline finished",
+            extra={
+                "run_id": context.run_id,
+                "status": status,
+                "discovered": metrics.discovered,
+                "normalized": metrics.normalized,
+                "enriched": metrics.enriched,
+                "qualified": metrics.qualified,
+                "pending": metrics.pending,
+                "disqualified": metrics.disqualified,
+                "error_count": len(errors),
+                "published_qualified_leads": (
+                    outputs.published_qualified_leads is not None
+                ),
+            },
+        )
+
     logger.info(
         "Starting Pearl Lemon pipeline",
         extra={"run_id": context.run_id, "pipeline_version": context.pipeline_version},
@@ -292,8 +313,7 @@ async def run_pipeline(
     except Exception as exc:
         return record_stage_failure("extraction", exc)
     metrics.discovered = len(raw_records)
-    no_records_discovered = not raw_records
-    if no_records_discovered:
+    if not raw_records:
         message = "Extraction completed successfully but found no records"
         logger.warning(
             message,
@@ -306,6 +326,8 @@ async def run_pipeline(
                 message=message,
             )
         )
+        log_pipeline_finished("partial")
+        return make_result("partial")
 
     logger.info("Starting normalization stage", extra={"run_id": context.run_id})
     try:
@@ -436,38 +458,28 @@ async def run_pipeline(
             result.qualification.status == "disqualified"
             for result in qualified_results
         )
-        if not no_records_discovered:
+        JSONLRepository(
+            pipeline_config.qualified_output_path, enable_locking=False
+        ).overwrite(
             JSONLRepository(
-                pipeline_config.qualified_output_path, enable_locking=False
-            ).overwrite(
-                JSONLRepository(
-                    run_paths["qualified"], enable_locking=False
-                ).read_records()
-            )
-            outputs.published_qualified_leads = str(
-                pipeline_config.qualified_output_path
-            )
+                run_paths["qualified"], enable_locking=False
+            ).read_records()
+        )
+        outputs.published_qualified_leads = str(
+            pipeline_config.qualified_output_path
+        )
         del qualified_results
     except Exception as exc:
         return record_stage_failure("qualification", exc)
 
     status: Literal["completed", "partial", "failed"] = (
         "partial"
-        if no_records_discovered
-        or extraction_was_partial
+        if extraction_was_partial
         or metrics.enrichment_partial
         or metrics.enrichment_failed
         else "completed"
     )
-    logger.info(
-        "Pearl Lemon pipeline finished",
-        extra={
-            "run_id": context.run_id,
-            "status": status,
-            "discovered": metrics.discovered,
-            "qualified": metrics.qualified,
-        },
-    )
+    log_pipeline_finished(status)
     return make_result(status)
 
 

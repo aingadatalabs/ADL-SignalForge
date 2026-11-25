@@ -120,7 +120,8 @@ def test_reversed_team_size_range_is_pending_and_warned():
         PearlLemonQualificationOrchestrator().evaluate_candidate(account)
     )
 
-    assert result.qualification.status == "pending"
+    assert result.qualification.status == "eligible"
+    assert any("Inverted team-size" in w for w in result.input_warnings)
     assert result.firmographic_facts["employee_count"].status == "unknown"
     assert "Inverted team-size range was treated as unknown" in result.input_warnings
 
@@ -461,9 +462,10 @@ def test_empty_and_malformed_enrichment_data_returns_pending_not_an_exception():
 
     assert empty.qualification.status == "pending"
     assert empty.qualification.tier == "tier_3"
-    assert malformed.qualification.status == "pending"
+    assert malformed.qualification.status == "eligible"
+    assert any("Malformed team-size" in w for w in malformed.input_warnings)
     assert malformed.input_warnings == ["Malformed team-size data was ignored"]
-    assert huge_integer.qualification.status == "pending"
+    assert huge_integer.qualification.status == "eligible"
     assert huge_integer.input_warnings == [
         "Out-of-range numeric team-size data was ignored"
     ]

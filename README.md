@@ -611,7 +611,7 @@ python -m agencies.pearl_lemon.run_pipeline
 
 The Hunter key must be available in the process environment; the standalone pipeline command does not load `.env`. Keep the key in local or managed secret configuration and out of source control.
 
-Each run writes stage snapshots beneath `.runs/<run_id>` within the corresponding stage directory. A run that discovers no records is reported as partial with a `NoRecordsDiscovered` error and does not replace the stable qualified-leads snapshot. Partial or failed runs exit with a non-zero status.
+Each run writes stage snapshots beneath `.runs/<run_id>` within the corresponding stage directory. A run that discovers no records is reported as partial with a `NoRecordsDiscovered` error, keeps its empty raw snapshot, skips downstream stages, and does not replace the stable qualified-leads snapshot. Partial or failed runs exit with a non-zero status.
 
 Proxy use is disabled unless `SIGNALFORGE_PROXY_PROVIDER` is set to `oxylabs` or `nodemaven`. Configure the selected provider's URL with `OXYLABS_PROXY_URL` or `NODEMAVEN_PROXY_URL`; credentials belong in environment configuration, not source control.
 
