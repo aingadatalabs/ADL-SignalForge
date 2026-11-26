@@ -69,10 +69,6 @@ HEADCOUNT_EXACT_PATTERN = re.compile(
     r"\b(\d[\d,]*)\s+(?:employees|team members|staff)\b",
     re.IGNORECASE,
 )
-BUSINESS_MODEL_PATTERN = re.compile(
-    r"\bB2B\b|\bbusiness.to.business\b|\bB2C\b|\bbusiness.to.consumer\b",
-    re.IGNORECASE,
-)
 HEADQUARTERS_PATTERN = re.compile(
     r"\b(?:headquartered|headquarters|head office|based)\s+(?:in|at)\s+"
     r"([A-Z][A-Za-z .,'-]{1,70}?)(?=\s*(?:[.;]|$))",
@@ -411,14 +407,7 @@ class PearlLemonEnrichmentEngine:
             mx_status,
             mx_hosts,
         )
-        record["website_evidence_available"] = bool(
-            record.get("website_evidence_available")
-            or any(
-                page.get("fetch_status") == "success"
-                and page.get("cleaned_text")
-                for page in pages
-            )
-        )
+        record["website_evidence_available"] = self.icp.has_website_evidence(record)
         record["provider_status"] = provider_status
         record["enrichment_errors"] = errors
         record["enrichment_status"] = "partial" if errors else "complete"
@@ -534,12 +523,53 @@ class PearlLemonEnrichmentEngine:
         search_evidence: list[dict[str, Any]],
         pages: list[dict[str, Any]],
     ) -> None:
+        domain = self._normalize_domain(record)
         record["search_evidence"] = search_evidence
         record["crawl_result"] = {
             "company_id": record.get("company_id"),
             "canonical_domain": record.get("canonical_domain"),
             "pages": pages,
         }
+        if not self.icp.has_business_activity_evidence(record):
+            activity_page = next(
+                (
+                    page
+                    for page in pages
+                    if page.get("fetch_status") == "success"
+                    and page.get("url")
+                    and page.get("cleaned_text")
+                    and len(page["cleaned_text"].strip()) >= 12
+                    and domain
+                    and self._same_site(page["url"], domain)
+                ),
+                None,
+            )
+            if activity_page:
+                record["business_activity_evidence"] = activity_page[
+                    "cleaned_text"
+                ][:MAX_EVIDENCE_SNIPPET_LENGTH]
+                record["business_activity_source_url"] = activity_page["url"]
+                record["business_activity_source_type"] = "website_crawl"
+                record["business_activity_supported"] = True
+            else:
+                record.pop("business_activity_evidence", None)
+                record.pop("business_activity_source_url", None)
+                record.pop("business_activity_source_type", None)
+                record.pop("business_activity_supported", None)
+
+        if not record.get("primary_industry"):
+            if record.get("industry_evidence"):
+                record.pop("industry", None)
+                record.pop("industry_evidence", None)
+            elif record.get("industry"):
+                record["primary_industry"] = record["industry"]
+        model_evidence = record.get("business_model_evidence")
+        if (
+            model_evidence
+            and not self.icp.is_verified_business_model_evidence(model_evidence)
+        ):
+            record.pop("business_model", None)
+            record.pop("business_model_evidence", None)
 
         sources = [
             (item["source_url"], f'{item.get("title", "")} {item.get("text", "")}')
@@ -629,34 +659,27 @@ class PearlLemonEnrichmentEngine:
         )
 
         full_text = "\n".join(text for _, text in sources)
-        if not record.get("industry"):
-            matched_industries = self.icp.match_industries([full_text])
-            if matched_industries:
-                record["industry"] = matched_industries
-                record["industry_evidence"] = [
-                    {"source_url": source_url, "text": text[:MAX_EVIDENCE_SNIPPET_LENGTH]}
-                    for source_url, text in sources
-                    if self.icp.match_industries([text])
-                ]
 
         if not record.get("business_model"):
-            match = BUSINESS_MODEL_PATTERN.search(full_text)
-            if match:
-                record["business_model"] = (
-                    "B2B" if "B2B" in match.group().upper() else "B2C"
+            description = self._string_value(record, "description")
+            description_url = self._string_value(
+                record, "description_source_url", "source_url"
+            )
+            if (
+                description
+                and description_url
+                and self._same_site(description_url, domain)
+            ):
+                model = self.icp.classify_business_model(
+                    [description], [description]
                 )
-                source_url = next(
-                    (
-                        url
-                        for url, text in sources
-                        if BUSINESS_MODEL_PATTERN.search(text)
-                    ),
-                    None,
-                )
-                record["business_model_evidence"] = {
-                    "source_url": source_url,
-                    "text": match.group(),
-                }
+                if model != "unknown":
+                    record["business_model"] = model
+                    record["business_model_evidence"] = {
+                        "source_type": "verified_company_description",
+                        "source_url": description_url,
+                        "text": description,
+                    }
 
         if "employee_count" not in record and "team_size_text" not in record:
             for source_url, text in sources:
@@ -732,22 +755,6 @@ class PearlLemonEnrichmentEngine:
             tld_code = _infer_country_code(None, domain)
             if tld_code:
                 record["country_code"] = tld_code
-
-        if not record.get("business_activity_evidence"):
-            activity_source = next(
-                (
-                    (url, text)
-                    for url, text in sources
-                    if text and len(text.strip()) >= 12
-                ),
-                None,
-            )
-            if activity_source:
-                record["business_activity_evidence"] = activity_source[1][
-                    :MAX_EVIDENCE_SNIPPET_LENGTH
-                ]
-                record["business_activity_source_url"] = activity_source[0]
-                record["business_activity_supported"] = True
 
         acquisition_needs = self._string_list(record.get("acquisition_needs"))
         service_evidence: list[dict[str, str]] = []
@@ -1041,6 +1048,7 @@ class PearlLemonEnrichmentEngine:
             "matched_industries": assessment.matched_industries,
             "matched_job_titles": assessment.matched_job_titles,
             "matched_services": assessment.matched_services,
+            "matched_acquisition_pains": assessment.matched_acquisition_pains,
             "matched_intent_signals": assessment.matched_intent_signals,
             "matched_technologies": assessment.matched_technologies,
             "evidence_gates": assessment.evidence_gates,

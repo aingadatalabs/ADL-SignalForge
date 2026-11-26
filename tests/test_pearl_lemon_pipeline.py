@@ -43,12 +43,30 @@ def test_pipeline_runs_all_stages_and_propagates_lineage(
                     "company_name": resolved["agency_name"],
                     "company_identity_resolved": True,
                     "website_evidence_available": True,
+                    "website_evidence": "https://example.com/about",
                     "industry": "B2B SaaS",
                     "country_code": "GB",
                     "business_model": "B2B",
                     "employee_count": 50,
-                    "commercial_capacity": True,
+                    "proven_offer": True,
+                    "has_internal_sales_team": True,
+                    "has_acquisition_budget": True,
+                    "has_existing_sales_pipeline": True,
                     "business_activity_supported": True,
+                    "business_activity_evidence": "B2B workflow software for businesses.",
+                    "business_activity_source_url": "https://example.com/about",
+                    "crawl_result": {
+                        "canonical_domain": "example.com",
+                        "pages": [
+                            {
+                                "url": "https://example.com/about",
+                                "fetch_status": "success",
+                                "cleaned_text": (
+                                    "B2B workflow software for businesses."
+                                ),
+                            }
+                        ],
+                    },
                     "decision_makers": [
                         {
                             "full_name": "Alex Smith",

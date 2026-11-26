@@ -29,6 +29,7 @@ from agencies.adl.qualification_engine.orchestrator import (
     QualificationOrchestrator,
 )
 from agencies.pearl_lemon.icp import (
+    BusinessModel,
     DEFAULT_PEARL_LEMON_ICP,
     FirmographicFact,
     ICPMatchAssessment,
@@ -36,7 +37,7 @@ from agencies.pearl_lemon.icp import (
 )
 
 PEARL_LEMON_QUALIFICATION_VERSION = "1.0.0"
-PEARL_LEMON_ICP_VERSION = "1.0.0"
+PEARL_LEMON_ICP_VERSION = "1.6.0"
 PEARL_LEMON_SCORING_VERSION = "1.0.0"
 DEFAULT_ENRICHED_RECORDS_PATH = (
     Path(__file__).parent / "enrichment_engine" / "enriched_records.jsonl"
@@ -98,10 +99,12 @@ class PearlLemonQualificationResult(BaseModel):
     qualification: QualificationSummary
     dimension_scores: dict[str, float]
     dimension_completeness: dict[str, float]
+    business_model: BusinessModel
     firmographic_facts: dict[str, FirmographicFact]
     score_explanation: list[ScoreExplanation]
     evidence_gates: dict[str, bool]
     matched_signals: dict[str, list[str]]
+    verified_decision_maker_emails: list[str] = Field(default_factory=list)
     disqualification_reasons: list[str]
     outreach_blockers: list[str]
     deterministic_checks: list[RuleCheck]
@@ -362,6 +365,7 @@ class PearlLemonQualificationOrchestrator:
             ),
             dimension_scores=assessment.dimension_scores,
             dimension_completeness=assessment.dimension_completeness,
+            business_model=assessment.business_model,
             firmographic_facts=assessment.firmographic_facts,
             score_explanation=self._score_explanation(assessment, record),
             evidence_gates=assessment.evidence_gates,
@@ -369,9 +373,13 @@ class PearlLemonQualificationOrchestrator:
                 "industries": assessment.matched_industries,
                 "decision_maker_titles": assessment.matched_job_titles,
                 "services": assessment.matched_services,
+                "acquisition_pains": assessment.matched_acquisition_pains,
                 "intent": assessment.matched_intent_signals,
                 "technologies": assessment.matched_technologies,
             },
+            verified_decision_maker_emails=(
+                assessment.verified_decision_maker_emails
+            ),
             disqualification_reasons=reasons,
             outreach_blockers=self._outreach_blockers(assessment, status),
             deterministic_checks=checks,
@@ -551,19 +559,24 @@ class PearlLemonQualificationOrchestrator:
                 or record.get("business_activity_evidence")
             )
         )
-        industry_values = list(
-            dict.fromkeys(
-                [
-                    *PearlLemonQualificationOrchestrator._strings(
-                        record.get("industry")
-                    ),
-                    *PearlLemonQualificationOrchestrator._strings(
-                        record.get("industries")
-                    ),
-                    *PearlLemonQualificationOrchestrator._strings(
-                        record.get("sector")
-                    ),
-                ]
+        industry_values = (
+            PearlLemonQualificationOrchestrator._strings(
+                record.get("primary_industry")
+            )
+            or list(
+                dict.fromkeys(
+                    [
+                        *PearlLemonQualificationOrchestrator._strings(
+                            record.get("industry")
+                        ),
+                        *PearlLemonQualificationOrchestrator._strings(
+                            record.get("industries")
+                        ),
+                        *PearlLemonQualificationOrchestrator._strings(
+                            record.get("sector")
+                        ),
+                    ]
+                )
             )
         )
         return CompanyQualificationInput(
@@ -634,7 +647,13 @@ class PearlLemonQualificationOrchestrator:
     ) -> list[ScoreExplanation]:
         signals = {
             "firmographic_fit": assessment.matched_industries,
-            "service_alignment": assessment.matched_services,
+            "service_alignment": [
+                *assessment.matched_services,
+                *[
+                    f"acquisition pain: {pain}"
+                    for pain in assessment.matched_acquisition_pains
+                ],
+            ],
             "buying_intent": assessment.matched_intent_signals,
         }
         evidence_fields: dict[str, tuple[str, ...]] = {
@@ -643,7 +662,10 @@ class PearlLemonQualificationOrchestrator:
                 "employee_count_evidence",
                 "headquarters_evidence",
                 "business_model_evidence",
-                "commercial_capacity_evidence",
+                "commercial_maturity_evidence",
+                "sales_infrastructure_evidence",
+                "acquisition_budget_evidence",
+                "sales_pipeline_evidence",
                 "industry",
                 "industries",
                 "sector",
@@ -657,7 +679,43 @@ class PearlLemonQualificationOrchestrator:
                 "employee_range",
                 "team_size",
                 "estimated_team_size",
-                "commercial_capacity",
+                "proven_offer",
+                "has_proven_offer",
+                "established_product",
+                "has_established_product",
+                "established_service",
+                "has_established_service",
+                "product_service_established",
+                "annual_turnover_gbp_5m_plus",
+                "has_internal_sales_team",
+                "has_sales_team",
+                "has_established_sales_team",
+                "sales_process_defined",
+                "sales_infrastructure",
+                "has_crm",
+                "crm_in_use",
+                "crm_system",
+                "crm_name",
+                "sales_pipeline_system",
+                "lead_management_system",
+                "has_acquisition_budget",
+                "meaningful_acquisition_budget",
+                "acquisition_budget_confirmed",
+                "has_marketing_budget",
+                "marketing_budget_confirmed",
+                "has_customer_acquisition_budget",
+                "customer_acquisition_budget_confirmed",
+                "has_existing_sales_pipeline",
+                "sales_pipeline_exists",
+                "active_sales_pipeline",
+                "customer_acquisition_operation_active",
+                "lead_generation_process_active",
+                "outbound_program_active",
+                "sales_pipeline_evidence",
+                "existing_sales_pipeline",
+                "customer_acquisition_operation",
+                "lead_generation_process",
+                "outbound_program",
             ),
             "service_alignment": (
                 "service_alignment_evidence",
@@ -667,6 +725,10 @@ class PearlLemonQualificationOrchestrator:
                 "growth_needs",
                 "services_needed",
                 "sales_challenges",
+                "pain_points",
+                "acquisition_challenges",
+                "lead_generation_challenges",
+                "acquisition_needs",
             ),
             "buying_intent": (
                 "intent_signal_evidence",

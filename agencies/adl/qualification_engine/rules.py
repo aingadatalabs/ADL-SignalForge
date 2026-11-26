@@ -64,7 +64,7 @@ class QualificationConfig(BaseModel):
         ]
     )
     min_team_size: int = 1
-    max_team_size: int = 100
+    max_team_size: int | None = 100
 
 
 class CompanyQualificationInput(BaseModel):
@@ -211,21 +211,34 @@ class DeterministicRuleEngine:
             interval = self._parse_team_size_interval(candidate_input.team_size_text)
             if interval:
                 min_sz, max_sz = interval
-                # If max_sz is None (e.g. "50+"), check if min exceeds upper ceiling
                 is_out_of_bounds = False
                 if max_sz is not None:
-                    if max_sz < self.config.min_team_size or min_sz > self.config.max_team_size:
+                    upper_boundary_band = (
+                        self.config.max_team_size is not None
+                        and min_sz == self.config.max_team_size + 1
+                        and max_sz > min_sz
+                    )
+                    if max_sz < self.config.min_team_size or (
+                        self.config.max_team_size is not None
+                        and min_sz > self.config.max_team_size
+                        and not upper_boundary_band
+                    ):
                         is_out_of_bounds = True
-                else:
+                elif self.config.max_team_size is not None:
                     if min_sz > self.config.max_team_size:
                         is_out_of_bounds = True
 
                 if is_out_of_bounds:
+                    maximum = (
+                        str(self.config.max_team_size)
+                        if self.config.max_team_size is not None
+                        else "no upper limit"
+                    )
                     checks.append(RuleCheck(
                         rule_id="R005",
                         rule_name="Team Size Bounds",
                         status="failed",
-                        reason=f"Team size interval {interval} is entirely outside acceptable thresholds [{self.config.min_team_size}, {self.config.max_team_size}].",
+                        reason=f"Team size interval {interval} is entirely outside acceptable thresholds [{self.config.min_team_size}, {maximum}].",
                         observed_value=candidate_input.team_size_text,
                     ))
                     reasons.append("invalid_team_size")

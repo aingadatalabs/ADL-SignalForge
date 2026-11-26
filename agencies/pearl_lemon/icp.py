@@ -3,7 +3,7 @@
 import re
 from collections.abc import Mapping, Sequence
 from math import isfinite
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -12,6 +12,7 @@ from agencies.adl.qualification_engine.rules import QualificationConfig
 
 ICPStatus = Literal["eligible", "disqualified", "pending"]
 OutreachReadiness = Literal["ready", "enrichment_required", "blocked"]
+BusinessModel = Literal["b2b", "b2c", "b2b_b2c", "unknown"]
 FirmographicFactStatus = Literal[
     "matched",
     "out_of_target",
@@ -40,6 +41,7 @@ class ICPMatchAssessment(BaseModel):
     dimension_scores: dict[str, float]
     dimension_completeness: dict[str, float]
     composite_score: float
+    business_model: BusinessModel = "unknown"
     team_size_status: Literal[
         "in_range", "potentially_in_range", "out_of_range", "unknown"
     ]
@@ -47,9 +49,11 @@ class ICPMatchAssessment(BaseModel):
     outreach_readiness: OutreachReadiness
     firmographic_facts: dict[str, FirmographicFact] = Field(default_factory=dict)
     outreach_blockers: list[str] = Field(default_factory=list)
+    verified_decision_maker_emails: list[str] = Field(default_factory=list)
     matched_industries: list[str] = Field(default_factory=list)
     matched_job_titles: list[str] = Field(default_factory=list)
     matched_services: list[str] = Field(default_factory=list)
+    matched_acquisition_pains: list[str] = Field(default_factory=list)
     matched_intent_signals: list[str] = Field(default_factory=list)
     matched_technologies: list[str] = Field(default_factory=list)
     disqualification_reasons: list[str] = Field(default_factory=list)
@@ -90,7 +94,7 @@ class PearlLemonICP(QualificationConfig):
         ]
     )
     min_team_size: int = 10
-    max_team_size: int = 250
+    max_team_size: int | None = 250
 
     target_industries: set[str] = Field(
         default_factory=lambda: {
@@ -99,19 +103,21 @@ class PearlLemonICP(QualificationConfig):
             "Professional Services",
             "Healthcare",
             "Financial Services",
+            "Technology",
+            "Manufacturing",
+            "Property and Real Estate",
         }
     )
     industry_aliases: dict[str, list[str]] = Field(
         default_factory=lambda: {
             "B2B SaaS": [
                 "b2b saas", "enterprise software", "software as a service",
-                "workflow automation", "cybersecurity",
             ],
             "E-commerce": ["e-commerce", "e commerce", "ecommerce", "online retailer"],
             "Professional Services": [
-                "professional services", "consulting", "recruitment",
+                "professional services", "consulting",
                 "business advisory", "specialist services", "law firm",
-                "legal services", "commercial property", "real estate",
+                "legal services",
             ],
             "Healthcare": [
                 "healthcare", "health tech", "healthtech", "medical services",
@@ -122,6 +128,17 @@ class PearlLemonICP(QualificationConfig):
                 "financial software", "commercial finance", "wealth management",
                 "private banking", "venture capital", "growth capital",
                 "hedge fund", "corporate finance",
+            ],
+            "Technology": [
+                "technology", "information technology", "it services",
+            ],
+            "Manufacturing": [
+                "manufacturing", "manufacturer", "industrial equipment",
+                "industrial products",
+            ],
+            "Property and Real Estate": [
+                "property", "real estate", "commercial property",
+                "property development", "real estate investment",
             ],
         }
     )
@@ -141,6 +158,20 @@ class PearlLemonICP(QualificationConfig):
             "VP of Marketing",
             "Head of Growth",
             "Digital Marketing Director",
+            "Marketing Director",
+            "Director of Marketing",
+            "Sales Director",
+            "Director of Sales",
+            "Growth Director",
+            "Director of Growth",
+            "Revenue Director",
+            "Director of Revenue",
+            "Business Development Director",
+            "Director of Business Development",
+            "Commercial Director",
+            "Director of Commercial",
+            "Sales Operations Director",
+            "Director of Sales Operations",
             "Founder",
             "Co-Founder",
             "Managing Director",
@@ -150,7 +181,6 @@ class PearlLemonICP(QualificationConfig):
             "Owner",
             "Principal",
             "Partner",
-            "Director",
             "Head of Marketing",
             "Head of Sales",
             "CEO",
@@ -206,6 +236,52 @@ class PearlLemonICP(QualificationConfig):
             ],
         }
     )
+    acquisition_pain_signals: dict[str, list[str]] = Field(
+        default_factory=lambda: {
+            "poor target-account fit": [
+                "wrong prospects",
+                "wrong target accounts",
+                "poor targeting",
+                "targeting the wrong",
+                "low-quality leads",
+                "low quality leads",
+                "irrelevant leads",
+            ],
+            "underperforming or outdated outreach": [
+                "outdated outreach",
+                "underperforming outreach",
+                "generic outreach",
+                "low response rates",
+                "poor response rates",
+                "single-channel outreach",
+            ],
+            "inconsistent lead qualification": [
+                "lack of repeatable qualification",
+                "lack a repeatable qualification",
+                "lacks repeatable qualification",
+                "no repeatable qualification",
+                "inconsistent lead qualification",
+                "poor lead qualification",
+                "unqualified leads",
+            ],
+            "unpredictable sales pipeline": [
+                "unpredictable pipeline",
+                "pipeline is unpredictable",
+                "inconsistent pipeline",
+                "pipeline gaps",
+                "weak pipeline",
+                "lack of pipeline visibility",
+                "not enough qualified opportunities",
+            ],
+            "manual prospect research": [
+                "manual prospect research",
+                "manually researching prospects",
+                "manual lead research",
+                "manual list building",
+                "spreadsheet-based prospecting",
+            ],
+        }
+    )
     preferred_technologies: set[str] = Field(
         default_factory=lambda: {
             "HubSpot",
@@ -241,9 +317,11 @@ class PearlLemonICP(QualificationConfig):
 
     def evaluate(self, account_data: Mapping[str, Any]) -> ICPMatchAssessment:
         """Assess raw or normalized account fields without treating missing data as a pass."""
-        industry_values = self._values(
-            account_data, "industry", "industries", "sector"
-        )
+        industry_values = self._values(account_data, "primary_industry")
+        if not industry_values and not account_data.get("industry_evidence"):
+            industry_values = self._values(
+                account_data, "industry", "industries", "sector"
+            )
         matched_industries = self._match_industries(industry_values)
         industry_known = bool(industry_values)
 
@@ -254,10 +332,32 @@ class PearlLemonICP(QualificationConfig):
         geography_match = self._matches_geography(geography_values)
 
         business_models = self._values(account_data, "business_model", "market_type")
-        is_b2b = self._is_b2b(business_models)
+        business_model_evidence = account_data.get("business_model_evidence")
+        if (
+            business_model_evidence
+            and not self.is_verified_business_model_evidence(
+                business_model_evidence
+            )
+        ):
+            business_models = []
+        customer_values = self._values(
+            account_data,
+            "customer_types",
+            "customer_segments",
+            "target_customers",
+            "target_market",
+            "customer_base",
+        )
+        business_model = self._classify_business_model(
+            business_models, customer_values
+        )
+        has_b2b_customers = business_model in {"b2b", "b2b_b2c"}
 
         team_size_status = self._team_size_status(account_data)
-        commercial_capacity = self._has_commercial_capacity(account_data)
+        commercial_maturity = self._has_commercial_maturity(account_data)
+        sales_infrastructure = self._has_sales_infrastructure(account_data)
+        acquisition_capacity = self._has_acquisition_capacity(account_data)
+        existing_sales_pipeline = self._has_existing_sales_pipeline(account_data)
 
         matched_job_titles = self._match_job_titles(account_data)
         matched_technologies = self._match_technologies(account_data)
@@ -271,6 +371,19 @@ class PearlLemonICP(QualificationConfig):
         )
         matched_services = self._matched_categories(
             service_corpus, self.service_alignment_signals
+        )
+        acquisition_pain_corpus = self._corpus(
+            account_data,
+            "pain_points",
+            "acquisition_challenges",
+            "lead_generation_challenges",
+            "commercial_challenges",
+            "sales_challenges",
+            "growth_needs",
+            "acquisition_needs",
+        )
+        matched_acquisition_pains = self._matched_categories(
+            acquisition_pain_corpus, self.acquisition_pain_signals
         )
         intent_corpus = self._corpus(
             account_data,
@@ -290,12 +403,24 @@ class PearlLemonICP(QualificationConfig):
             "out_of_range": 0.0,
             "unknown": 0.0,
         }[team_size_status]
+        commercial_facts = (
+            commercial_maturity,
+            sales_infrastructure,
+            acquisition_capacity,
+            existing_sales_pipeline,
+        )
+        commercial_readiness_score = self._percentage(
+            [fact is True for fact in commercial_facts]
+        )
+        commercial_completeness = self._percentage(
+            [fact is not None for fact in commercial_facts]
+        )
         firmographic_factors = (
             float(bool(matched_industries)),
             float(bool(geography_match)),
-            float(is_b2b is True),
+            float(has_b2b_customers),
             team_size_factor,
-            float(commercial_capacity is True),
+            commercial_readiness_score / 100,
         )
         firmographic_score = self._percentage(firmographic_factors)
         service_score = self._percentage(
@@ -304,6 +429,16 @@ class PearlLemonICP(QualificationConfig):
                 for category in self.service_alignment_signals
             ]
         )
+        acquisition_pain_score = self._percentage(
+            [
+                self._category_matches(
+                    acquisition_pain_corpus,
+                    self.acquisition_pain_signals[category],
+                )
+                for category in self.acquisition_pain_signals
+            ]
+        )
+        service_score = max(service_score, acquisition_pain_score)
         intent_score = self._percentage(
             [
                 self._category_matches(intent_corpus, self.buying_intent_signals[category])
@@ -319,14 +454,16 @@ class PearlLemonICP(QualificationConfig):
             (
                 float(industry_known),
                 float(bool(geography_values)),
-                float(is_b2b is not None),
+                float(business_model != "unknown"),
                 float(team_size_status != "unknown"),
-                float(commercial_capacity is not None),
+                commercial_completeness / 100,
             )
         )
         dimension_completeness = {
             "firmographic_fit": firmographic_completeness,
-            "service_alignment": 100.0 if service_corpus else 0.0,
+            "service_alignment": self._percentage(
+                (bool(service_corpus), bool(acquisition_pain_corpus))
+            ),
             "buying_intent": 100.0 if intent_corpus else 0.0,
         }
         composite_score = round(
@@ -361,12 +498,12 @@ class PearlLemonICP(QualificationConfig):
             "business_model": FirmographicFact(
                 status=(
                     "confirmed"
-                    if is_b2b is True
+                    if has_b2b_customers
                     else "not_confirmed"
-                    if is_b2b is False
+                    if business_model == "b2c"
                     else "unknown"
                 ),
-                observed_value=business_models or None,
+                observed_value=business_model,
             ),
             "employee_count": FirmographicFact(
                 status=team_size_status,
@@ -384,15 +521,45 @@ class PearlLemonICP(QualificationConfig):
                     None,
                 ),
             ),
-            "commercial_capacity": FirmographicFact(
+            "commercial_maturity": FirmographicFact(
                 status=(
                     "confirmed"
-                    if commercial_capacity is True
+                    if commercial_maturity is True
                     else "not_confirmed"
-                    if commercial_capacity is False
+                    if commercial_maturity is False
                     else "unknown"
                 ),
-                observed_value=commercial_capacity,
+                observed_value=commercial_maturity,
+            ),
+            "sales_infrastructure": FirmographicFact(
+                status=(
+                    "confirmed"
+                    if sales_infrastructure is True
+                    else "not_confirmed"
+                    if sales_infrastructure is False
+                    else "unknown"
+                ),
+                observed_value=sales_infrastructure,
+            ),
+            "acquisition_capacity": FirmographicFact(
+                status=(
+                    "confirmed"
+                    if acquisition_capacity is True
+                    else "not_confirmed"
+                    if acquisition_capacity is False
+                    else "unknown"
+                ),
+                observed_value=acquisition_capacity,
+            ),
+            "existing_sales_pipeline": FirmographicFact(
+                status=(
+                    "confirmed"
+                    if existing_sales_pipeline is True
+                    else "not_confirmed"
+                    if existing_sales_pipeline is False
+                    else "unknown"
+                ),
+                observed_value=existing_sales_pipeline,
             ),
         }
         disqualification_reasons = self._disqualification_reasons(
@@ -401,15 +568,14 @@ class PearlLemonICP(QualificationConfig):
             matched_industries,
             geography_values,
             geography_match,
-            business_models,
-            is_b2b,
+            business_model,
             team_size_status,
         )
         core_data_complete = (
             industry_known
             and bool(geography_values)
-            and is_b2b is not None
-            and team_size_status in ("in_range", "potentially_in_range", "unknown")
+            and business_model != "unknown"
+            and team_size_status in ("in_range", "potentially_in_range")
         )
 
         if disqualification_reasons:
@@ -445,14 +611,19 @@ class PearlLemonICP(QualificationConfig):
             dimension_scores=dimension_scores,
             dimension_completeness=dimension_completeness,
             composite_score=composite_score,
+            business_model=business_model,
             team_size_status=team_size_status,
             evidence_gates=evidence_gates,
             outreach_readiness=outreach_readiness,
             firmographic_facts=firmographic_facts,
             outreach_blockers=outreach_blockers,
+            verified_decision_maker_emails=self._verified_decision_maker_emails(
+                account_data
+            ),
             matched_industries=matched_industries,
             matched_job_titles=matched_job_titles,
             matched_services=matched_services,
+            matched_acquisition_pains=matched_acquisition_pains,
             matched_intent_signals=matched_intent_signals,
             matched_technologies=matched_technologies,
             disqualification_reasons=disqualification_reasons,
@@ -466,6 +637,16 @@ class PearlLemonICP(QualificationConfig):
         """Public validation contract for canonical domains used by enrichment."""
         return self._valid_domain(value)
 
+    def has_website_evidence(self, account_data: Mapping[str, Any]) -> bool:
+        """Check for source URLs or successfully crawled website content."""
+        return self._has_website_evidence(account_data)
+
+    def has_business_activity_evidence(
+        self, account_data: Mapping[str, Any]
+    ) -> bool:
+        """Check that the activity claim is supported by a successful same-site crawl."""
+        return self._has_activity_evidence(account_data)
+
     def match_industries(self, values: Sequence[str]) -> list[str]:
         """Public industry matcher for enrichment and later qualification stages."""
         return self._match_industries(list(values))
@@ -476,13 +657,13 @@ class PearlLemonICP(QualificationConfig):
 
     def _match_industries(self, values: list[str]) -> list[str]:
         matches: list[str] = []
-        normalized_values = [self._normalize(value) for value in values if value.strip()]
+        normalized_values = {
+            self._normalize_industry(value) for value in values if value.strip()
+        }
         for industry in self.target_industries:
             terms = self.industry_aliases.get(industry, []) + [industry]
-            if any(
-                self._contains_phrase(value, self._normalize(term))
-                for value in normalized_values
-                for term in terms
+            if normalized_values.intersection(
+                self._normalize_industry(term) for term in terms
             ):
                 matches.append(industry)
         return sorted(matches)
@@ -513,48 +694,98 @@ class PearlLemonICP(QualificationConfig):
             for name, code in country_aliases.items():
                 if self._contains_phrase(normalized, name) and code in allowed:
                     return True
-            for code in allowed:
-                if re.search(rf"(?<![a-z]){re.escape(code.lower())}(?![a-z])", normalized):
-                    return True
+            if normalized.upper() in allowed:
+                return True
         return False
 
-    @staticmethod
-    def _is_b2b(values: list[str]) -> bool | None:
-        if not values:
-            return None
-        text = " ".join(" ".join(values).casefold().split())
-        if re.search(r"\bnot\s+(?:exclusively\s+)?b2b\b", text):
-            return None
-        has_b2b = bool(re.search(r"\bb2b\b|\bbusiness to business\b", text))
-        has_b2c = bool(
-            re.search(r"\bb2c\b|\bbusiness to consumer\b|\bconsumer-only\b", text)
+    def classify_business_model(
+        self,
+        values: Sequence[str],
+        customer_values: Sequence[str] = (),
+    ) -> BusinessModel:
+        """Classify only explicit model labels or evidence about actual customers."""
+        return self._classify_business_model(
+            list(values), list(customer_values)
         )
+
+    @classmethod
+    def _classify_business_model(
+        cls,
+        values: list[str],
+        customer_values: list[str],
+    ) -> BusinessModel:
+        model_text = " ".join(cls._normalize(value) for value in values)
+        model_text = re.sub(
+            r"\b(?:not|never)\s+(?:exclusively\s+)?(?:b2b|b2c)\b",
+            " ",
+            model_text,
+        )
+        normalized_model = re.sub(r"[^a-z0-9]+", " ", model_text)
+        normalized_model = " ".join(normalized_model.split())
+        has_b2b = bool(
+            re.search(r"\bb2b\b|\bbusiness to business\b", normalized_model)
+        )
+        has_b2c = bool(
+            re.search(
+                r"\bb2c\b|\bbusiness to consumer\b|\bconsumer only\b",
+                normalized_model,
+            )
+        )
+
+        normalized_customers = " ".join(
+            re.sub(r"[^a-z0-9]+", " ", cls._normalize(value))
+            for value in customer_values
+        )
+        normalized_customers = " ".join(normalized_customers.split())
+        has_b2b = has_b2b or bool(
+            re.search(
+                r"\b(?:business(?:es)?|companies|organizations|enterprise customers?|"
+                r"commercial clients?)\b|"
+                r"\b(?:sell|serve|work with)\s+(?:to\s+)?"
+                r"(?:business(?:es)?|companies|organizations)\b",
+                normalized_customers,
+            )
+        )
+        has_b2c = has_b2c or bool(
+            re.search(
+                r"\b(?:consumers?|individuals|households|consumer customers?)\b|"
+                r"\b(?:sell|serve|work with)\s+(?:to\s+)?"
+                r"(?:consumers?|individuals|households)\b",
+                normalized_customers,
+            )
+        )
+        if has_b2b and has_b2c:
+            return "b2b_b2c"
         if has_b2b:
-            return True
+            return "b2b"
         if has_b2c:
-            return False
-        return None
+            return "b2c"
+        return "unknown"
+
+    @staticmethod
+    def is_verified_business_model_evidence(value: Any) -> bool:
+        """Check that model evidence came from the company's verified description."""
+        return (
+            isinstance(value, Mapping)
+            and value.get("source_type") == "verified_company_description"
+        )
 
     def _team_size_status(
         self, data: Mapping[str, Any]
     ) -> Literal["in_range", "potentially_in_range", "out_of_range", "unknown"]:
+        def within_range(count: int) -> bool:
+            return count >= self.min_team_size and (
+                self.max_team_size is None or count <= self.max_team_size
+            )
         raw_count = data.get("employee_count")
         if isinstance(raw_count, (int, float)) and not isinstance(raw_count, bool):
             if not isfinite(raw_count) or not float(raw_count).is_integer() or raw_count < 0:
                 return "unknown"
             count = int(raw_count)
-            return (
-                "in_range"
-                if self.min_team_size <= count <= self.max_team_size
-                else "out_of_range"
-            )
+            return "in_range" if within_range(count) else "out_of_range"
         if isinstance(raw_count, str) and raw_count.strip().isdigit():
             count = int(raw_count.strip())
-            return (
-                "in_range"
-                if self.min_team_size <= count <= self.max_team_size
-                else "out_of_range"
-            )
+            return "in_range" if within_range(count) else "out_of_range"
         values = self._values(
             data, "employee_count", "team_size_text", "employee_range", "team_size"
         )
@@ -575,14 +806,22 @@ class PearlLemonICP(QualificationConfig):
             return "unknown"
         if upper is not None and upper < self.min_team_size:
             return "out_of_range"
-        if lower > self.max_team_size:
-            return "out_of_range"
-        if lower >= self.min_team_size and upper is not None and upper <= self.max_team_size:
+        if self.max_team_size is not None and lower > self.max_team_size:
+            if not (
+                upper is not None
+                and upper > lower
+                and lower == self.max_team_size + 1
+            ):
+                return "out_of_range"
+            return "potentially_in_range"
+        if (
+            lower >= self.min_team_size
+            and upper is not None
+            and (self.max_team_size is None or upper <= self.max_team_size)
+        ):
             return "in_range"
-        if upper is None and lower >= self.min_team_size and lower > self.max_team_size:
-            return "out_of_range"
-        if lower == upper and self.min_team_size <= lower <= self.max_team_size:
-            return "in_range"
+        if upper is None and lower >= self.min_team_size:
+            return "in_range" if self.max_team_size is None else "potentially_in_range"
         return "potentially_in_range"
 
     def _match_job_titles(self, data: Mapping[str, Any]) -> list[str]:
@@ -667,19 +906,198 @@ class PearlLemonICP(QualificationConfig):
             )
         )
 
-    @staticmethod
-    def _has_commercial_capacity(data: Mapping[str, Any]) -> bool | None:
-        keys = (
-            "has_internal_sales_team",
-            "proven_offer",
-            "commercial_capacity",
-            "annual_turnover_gbp_5m_plus",
+    @classmethod
+    def _has_commercial_maturity(cls, data: Mapping[str, Any]) -> bool | None:
+        return cls._boolean_fact(
+            data,
+            (
+                "proven_offer",
+                "has_proven_offer",
+                "established_product",
+                "has_established_product",
+                "established_service",
+                "has_established_service",
+                "product_service_established",
+                "commercial_maturity",
+                "annual_turnover_gbp_5m_plus",
+            ),
         )
-        observed = [data[key] for key in keys if isinstance(data.get(key), bool)]
-        return any(observed) if observed else None
 
     @classmethod
-    def _evidence_gates(cls, data: Mapping[str, Any]) -> dict[str, bool]:
+    def _has_sales_infrastructure(cls, data: Mapping[str, Any]) -> bool | None:
+        sales_process = cls._boolean_fact(
+            data,
+            (
+                "has_internal_sales_team",
+                "has_sales_team",
+                "has_established_sales_team",
+                "sales_process_defined",
+                "sales_infrastructure",
+            ),
+        )
+        crm_status = cls._boolean_fact(data, ("has_crm", "crm_in_use"))
+        text_statuses = [
+            cls._sales_infrastructure_text_status(value)
+            for value in cls._values(
+                data,
+                "crm_system",
+                "crm_name",
+                "sales_pipeline_system",
+                "lead_management_system",
+            )
+        ]
+        if sales_process is True or crm_status is True or any(
+            status is True for status in text_statuses
+        ):
+            return True
+        if sales_process is False and crm_status is False:
+            return False
+        return None
+
+    @classmethod
+    def _has_acquisition_capacity(cls, data: Mapping[str, Any]) -> bool | None:
+        return cls._boolean_fact(
+            data,
+            (
+                "has_acquisition_budget",
+                "meaningful_acquisition_budget",
+                "acquisition_budget_confirmed",
+                "has_marketing_budget",
+                "marketing_budget_confirmed",
+                "has_customer_acquisition_budget",
+                "customer_acquisition_budget_confirmed",
+            ),
+        )
+
+    @classmethod
+    def _has_existing_sales_pipeline(cls, data: Mapping[str, Any]) -> bool | None:
+        observed = cls._boolean_fact(
+            data,
+            (
+                "has_existing_sales_pipeline",
+                "sales_pipeline_exists",
+                "active_sales_pipeline",
+                "customer_acquisition_operation_active",
+                "lead_generation_process_active",
+                "outbound_program_active",
+            ),
+        )
+        text_statuses = [
+            cls._sales_pipeline_text_status(value)
+            for value in cls._values(
+                data,
+                "sales_pipeline_evidence",
+                "existing_sales_pipeline",
+                "customer_acquisition_operation",
+                "lead_generation_process",
+                "outbound_program",
+            )
+        ]
+        return cls._merge_boolean_facts([observed, *text_statuses])
+
+    @staticmethod
+    def _boolean_fact(
+        data: Mapping[str, Any], keys: Sequence[str]
+    ) -> bool | None:
+        observed = [data[key] for key in keys if isinstance(data.get(key), bool)]
+        if not observed or any(value != observed[0] for value in observed):
+            return None
+        return observed[0]
+
+    @staticmethod
+    def _merge_boolean_facts(values: Sequence[bool | None]) -> bool | None:
+        observed = [value for value in values if isinstance(value, bool)]
+        if not observed or any(value != observed[0] for value in observed):
+            return None
+        return observed[0]
+
+    @staticmethod
+    def _sales_infrastructure_text_status(value: str) -> bool | None:
+        normalized = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+        if normalized in {
+            "",
+            "unknown",
+            "not known",
+            "not available",
+            "not applicable",
+            "unspecified",
+            "pending",
+            "n a",
+            "na",
+        }:
+            return None
+        if normalized in {"no", "none", "none yet", "untracked", "manual"}:
+            return None
+        if re.search(
+            r"\b(?:no|without|not using|not in use|does not|doesn t|do not|don t)"
+            r"\b.*\b(?:crm|pipeline|lead management|sales system)\b",
+            normalized,
+        ):
+            return None
+
+        known_systems = (
+            "hubspot",
+            "salesforce",
+            "pipedrive",
+            "zoho",
+            "microsoft dynamics",
+            "dynamics 365",
+            "freshsales",
+            "copper",
+            "close crm",
+            "sugarcrm",
+            "creatio",
+            "insightly",
+            "keap",
+            "attio",
+        )
+        if any(
+            PearlLemonICP._contains_phrase(normalized, system)
+            for system in known_systems
+        ):
+            return True
+        if any(
+            term in normalized
+            for term in ("spreadsheet", "google sheets", "manual", "untracked")
+        ):
+            return None
+        if any(
+            PearlLemonICP._contains_phrase(normalized, phrase)
+            for phrase in ("crm", "sales pipeline", "lead management")
+        ):
+            return True
+        return None
+
+    @staticmethod
+    def _sales_pipeline_text_status(value: str) -> bool | None:
+        normalized = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+        if normalized in {
+            "",
+            "unknown",
+            "not known",
+            "not available",
+            "not applicable",
+            "unspecified",
+            "pending",
+            "n a",
+            "na",
+        }:
+            return None
+        if re.search(
+            r"\b(?:no|without|not using|not in use|does not|doesn t|do not|don t)"
+            r"\b.*\b(?:sales pipeline|customer acquisition|lead generation|outbound)\b",
+            normalized,
+        ):
+            return False
+        if re.search(
+            r"\b(?:sales pipeline|customer acquisition operation|"
+            r"lead generation process|outbound program|prospecting operation)\b",
+            normalized,
+        ):
+            return True
+        return None
+
+    def _evidence_gates(self, data: Mapping[str, Any]) -> dict[str, bool]:
         identity = data.get("company_id") or data.get("company_name")
         domain = data.get("canonical_domain") or data.get("domain")
         declared_identity_state = data.get("company_identity_resolved")
@@ -688,20 +1106,20 @@ class PearlLemonICP(QualificationConfig):
             if isinstance(declared_identity_state, bool)
             else (
                 bool(identity)
-                and cls._valid_domain(domain)
+                and self._valid_domain(domain)
                 and str(identity).strip().casefold()
                 not in {"unknown", "unresolved", "none"}
             )
         )
-        website_evidence = cls._has_website_evidence(data)
-        activity_supported = cls._has_activity_evidence(data)
-        decision_maker_identified = cls._has_decision_maker_evidence(data)
+        website_evidence = self._has_website_evidence(data)
+        activity_supported = self._has_activity_evidence(data)
+        decision_maker_identified = self._has_decision_maker_evidence(data)
         contact_channel_verified = (
             data.get("contact_channel_verified") is True
             or data.get("verified_contact_channel") is True
             or data.get("contact_channel_verification") == "verified"
-            or cls._has_verified_contact(data.get("contact_channels"))
-            or cls._has_verified_email(data)
+            or self._has_verified_contact(data.get("contact_channels"))
+            or self._has_verified_email(data)
         )
         return {
             "company_identity_resolved": identity_resolved,
@@ -727,13 +1145,10 @@ class PearlLemonICP(QualificationConfig):
 
     @classmethod
     def _has_website_evidence(cls, data: Mapping[str, Any]) -> bool:
-        if data.get("website_evidence_available") is True or (
-            cls._valid_url(data.get("website"))
-            and (
-                cls._valid_url(data.get("website_source_url"))
-                or cls._valid_url(data.get("website_evidence"))
-                or cls._valid_url(data.get("website_evidence_url"))
-            )
+        if cls._valid_url(data.get("website")) and (
+            cls._valid_url(data.get("website_source_url"))
+            or cls._valid_url(data.get("website_evidence"))
+            or cls._valid_url(data.get("website_evidence_url"))
         ):
             return True
         crawl = data.get("crawl_result")
@@ -744,8 +1159,27 @@ class PearlLemonICP(QualificationConfig):
             for page in pages
         )
 
+    def _has_verified_email(self, data: Mapping[str, Any]) -> bool:
+        return bool(self._verified_decision_maker_emails(data))
+
+    def _verified_decision_maker_emails(
+        self, data: Mapping[str, Any]
+    ) -> list[str]:
+        verified_emails = []
+        for email, person in self._verified_email_people(data):
+            title = str(
+                self._field_value(person, "title")
+                or self._field_value(person, "job_title")
+                or ""
+            )
+            if self._is_target_job_title(title):
+                verified_emails.append(email)
+        return list(dict.fromkeys(verified_emails))
+
     @classmethod
-    def _has_verified_email(cls, data: Mapping[str, Any]) -> bool:
+    def _verified_email_people(
+        cls, data: Mapping[str, Any]
+    ) -> list[tuple[str, Any]]:
         report = data.get("verification_report")
         company_id = str(data.get("company_id") or "")
         domain = cls._normalized_domain(data.get("canonical_domain") or data.get("domain"))
@@ -759,14 +1193,20 @@ class PearlLemonICP(QualificationConfig):
             or company_id != report_company_id
             or domain != report_domain
         ):
-            return False
+            return []
         candidates = cls._field_value(report, "email_candidates")
         if not isinstance(candidates, Sequence):
-            return False
+            return []
         decision_makers = data.get("decision_makers") or cls._field_value(
             data.get("enrichment_profile"), "decision_makers"
         )
-        people = list(decision_makers) if isinstance(decision_makers, Sequence) and not isinstance(decision_makers, (str, bytes)) else []
+        people = (
+            list(decision_makers)
+            if isinstance(decision_makers, Sequence)
+            and not isinstance(decision_makers, (str, bytes))
+            else []
+        )
+        matched: list[tuple[str, Any]] = []
         for candidate in candidates:
             email = str(cls._field_value(candidate, "email") or "").strip()
             local_part, separator, raw_email_domain = email.partition("@")
@@ -790,64 +1230,116 @@ class PearlLemonICP(QualificationConfig):
             candidate_name = cls._normalize(
                 str(cls._field_value(candidate, "full_name") or "")
             )
-            if any(
+            person = next(
                 (
-                    candidate_person_id
-                    and candidate_person_id == cls._field_value(person, "person_id")
-                )
-                or (
-                    candidate_name
-                    and candidate_name
-                    == cls._normalize(str(cls._field_value(person, "full_name") or ""))
-                )
-                for person in people
+                    person
+                    for person in people
+                    if (
+                        candidate_person_id
+                        and candidate_person_id
+                        == cls._field_value(person, "person_id")
+                    )
+                    or (
+                        candidate_name
+                        and candidate_name
+                        == cls._normalize(
+                            str(cls._field_value(person, "full_name") or "")
+                        )
+                    )
+                ),
+                None,
+            )
+            if person is not None:
+                matched.append((email, person))
+        return matched
+
+    @classmethod
+    def _has_activity_evidence(cls, data: Mapping[str, Any]) -> bool:
+        evidence = data.get("business_activity_evidence")
+        if isinstance(evidence, Mapping):
+            evidence_mapping = cast(Mapping[str, Any], evidence)
+            claim_value = evidence_mapping.get("claim")
+            source_url = evidence_mapping.get("source_url")
+            if (
+                not isinstance(claim_value, str)
+                or evidence_mapping.get("verification_status") != "verified"
+            ):
+                return False
+            claim = claim_value.strip()
+        elif isinstance(evidence, str):
+            claim = evidence.strip()
+            source_url = data.get("business_activity_source_url")
+        else:
+            return False
+        if not isinstance(source_url, str):
+            return False
+        return (
+            len(claim) >= 12
+            and cls._normalize(claim) not in {"unverified", "unknown", "none", "pending"}
+            and cls._valid_url(source_url)
+            and cls._activity_claim_supported_by_crawl(data, claim, source_url)
+        )
+
+    @classmethod
+    def _activity_claim_supported_by_crawl(
+        cls, data: Mapping[str, Any], claim: str, source_url: str
+    ) -> bool:
+        crawl_result = data.get("crawl_result")
+        pages_value = cls._field_value(crawl_result, "pages")
+        if not isinstance(pages_value, Sequence) or isinstance(
+            pages_value, (str, bytes)
+        ):
+            return False
+        pages = cast(Sequence[Any], pages_value)
+
+        source_host = cls._normalized_domain(source_url).removeprefix("www.")
+        company_host = cls._normalized_domain(
+            data.get("canonical_domain") or data.get("domain")
+        ).removeprefix("www.")
+        if not source_host or not company_host or not (
+            source_host == company_host
+            or source_host.endswith(f".{company_host}")
+        ):
+            return False
+
+        source = urlsplit(source_url)
+        source_path = source.path.rstrip("/").casefold() or "/"
+        normalized_claim = cls._normalize(claim)
+        for page in pages:
+            if cls._field_value(page, "fetch_status") != "success":
+                continue
+            page_url = cls._field_value(page, "url")
+            if not cls._valid_url(page_url):
+                continue
+            parsed_page = urlsplit(str(page_url))
+            page_host = cls._normalized_domain(str(page_url)).removeprefix("www.")
+            page_path = parsed_page.path.rstrip("/").casefold() or "/"
+            page_text = cls._field_value(page, "cleaned_text")
+            if (
+                page_host == source_host
+                and page_path == source_path
+                and isinstance(page_text, str)
+                and normalized_claim in cls._normalize(page_text)
             ):
                 return True
         return False
 
-    @classmethod
-    def _has_activity_evidence(cls, data: Mapping[str, Any]) -> bool:
-        if data.get("business_activity_supported") is True:
-            return True
-        evidence = data.get("business_activity_evidence")
-        if isinstance(evidence, Mapping):
-            claim = str(evidence.get("claim") or "").strip()
-            return (
-                len(claim) >= 12
-                and cls._normalize(claim) not in {"unverified", "unknown", "none", "pending"}
-                and cls._valid_url(evidence.get("source_url"))
-                and evidence.get("verification_status") == "verified"
-            )
-        if not isinstance(evidence, str):
-            return False
-        claim = evidence.strip()
-        return (
-            len(claim) >= 12
-            and cls._normalize(claim) not in {"unverified", "unknown", "none", "pending"}
-            and cls._valid_url(data.get("business_activity_source_url"))
-        )
-
-    @classmethod
-    def _has_decision_maker_evidence(cls, data: Mapping[str, Any]) -> bool:
-        if data.get("decision_maker_identified") is True:
-            return True
-        people = data.get("decision_makers") or cls._field_value(
+    def _has_decision_maker_evidence(self, data: Mapping[str, Any]) -> bool:
+        people = data.get("decision_makers") or self._field_value(
             data.get("enrichment_profile"), "decision_makers"
         )
         if not isinstance(people, Sequence) or isinstance(people, (str, bytes)):
             return False
         return any(
-            bool(str(cls._field_value(person, "full_name") or "").strip())
-            and bool(
+            bool(str(self._field_value(person, "full_name") or "").strip())
+            and self._is_target_job_title(
                 str(
-                    cls._field_value(person, "title")
-                    or cls._field_value(person, "job_title")
+                    self._field_value(person, "title")
+                    or self._field_value(person, "job_title")
                     or ""
-                ).strip()
+                )
             )
-            and (
-                cls._valid_url(cls._field_value(person, "source_url"))
-            )
+            and self._valid_url(self._field_value(person, "source_url"))
             for person in people
         )
 
@@ -901,8 +1393,7 @@ class PearlLemonICP(QualificationConfig):
         matched_industries: list[str],
         geography_values: list[str],
         geography_match: bool | None,
-        business_models: list[str],
-        is_b2b: bool | None,
+        business_model: BusinessModel,
         team_size_status: str,
     ) -> list[str]:
         reasons: list[str] = []
@@ -918,7 +1409,7 @@ class PearlLemonICP(QualificationConfig):
             reasons.append(f"blocked_keyword:{reason_keyword}")
         if geography_values and geography_match is False:
             reasons.append("geography_out_of_target")
-        if business_models and is_b2b is False:
+        if business_model == "b2c":
             reasons.append("non_b2b_business_model")
         if team_size_status == "out_of_range":
             reasons.append("employee_count_out_of_range")
@@ -955,56 +1446,31 @@ class PearlLemonICP(QualificationConfig):
         return False
 
     def _blocked_keyword_matches(self, data: Mapping[str, Any]) -> list[str]:
-        fields = (
+        classification_fields = (
             "company_name",
             "industry",
             "industries",
             "sector",
-            "description",
-            "business_description",
+            "business_model",
+            "company_type",
+            "organization_type",
             "website_title",
-            "website_content",
-            "business_model",
-            "company_type",
-            "organization_type",
         )
-        structured_fields = (
-            "company_name",
-            "industry",
-            "industries",
-            "sector",
-            "business_model",
-            "company_type",
-            "organization_type",
-        )
-        values = self._values(data, *fields)
-        structured_values = self._values(data, *structured_fields)
+        values = self._values(data, *classification_fields)
         matches = []
         for keyword in self.blocked_keywords:
             normalized_keyword = self._normalize(keyword)
-            if normalized_keyword in {
-                "government",
-                "non profit",
-                "nonprofit",
-            }:
-                matched = any(
-                    self._contains_phrase(value, normalized_keyword)
-                    for value in structured_values
-                )
-            elif normalized_keyword == "recruiting agency":
-                matched = any(
-                    self._contains_phrase(value, normalized_keyword)
-                    and not (
+            matched = any(
+                self._contains_phrase(value, normalized_keyword)
+                and (
+                    normalized_keyword != "recruiting agency"
+                    or not (
                         self._contains_phrase(value, "software")
                         or self._contains_phrase(value, "platform")
                     )
-                    for value in structured_values
                 )
-            else:
-                matched = any(
-                    self._contains_phrase(value, normalized_keyword)
-                    for value in values
-                )
+                for value in values
+            )
             if matched:
                 matches.append(keyword)
         return matches
@@ -1075,10 +1541,15 @@ class PearlLemonICP(QualificationConfig):
     def _normalize(value: str) -> str:
         return " ".join(value.casefold().split())
 
+    @staticmethod
+    def _normalize_industry(value: str) -> str:
+        return " ".join(re.sub(r"[^a-z0-9]+", " ", value.casefold()).split())
+
 
 DEFAULT_PEARL_LEMON_ICP = PearlLemonICP()
 
 __all__ = [
+    "BusinessModel",
     "DEFAULT_PEARL_LEMON_ICP",
     "ICPMatchAssessment",
     "OutreachReadiness",

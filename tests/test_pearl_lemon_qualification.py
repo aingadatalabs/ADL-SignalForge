@@ -25,12 +25,28 @@ def qualified_account() -> dict[str, object]:
         "canonical_domain": "example.com",
         "website": "https://example.com",
         "website_evidence_available": True,
+        "website_evidence": "https://example.com/about",
         "industry": "B2B SaaS",
         "country_code": "GB",
         "business_model": "B2B",
         "employee_count": 50,
-        "commercial_capacity": True,
+        "proven_offer": True,
+        "has_internal_sales_team": True,
+        "has_acquisition_budget": True,
+        "has_existing_sales_pipeline": True,
         "business_activity_supported": True,
+        "business_activity_evidence": "B2B workflow software for businesses.",
+        "business_activity_source_url": "https://example.com/about",
+        "crawl_result": {
+            "canonical_domain": "example.com",
+            "pages": [
+                {
+                    "url": "https://example.com/about",
+                    "fetch_status": "success",
+                    "cleaned_text": "B2B workflow software for businesses.",
+                }
+            ],
+        },
         "decision_makers": [
             {
                 "full_name": "Alex Smith",
@@ -63,6 +79,7 @@ def test_default_settings_use_pearl_lemon_weights_and_targeting():
     assert settings.eligibility.weight_firmographic_fit == 0.4
     assert settings.eligibility.weight_service_alignment == 0.3
     assert settings.eligibility.weight_buying_intent == 0.3
+    assert settings.eligibility.max_team_size == 250
     assert settings.scorer_config.weight_fit == 0.4
     assert settings.tiering.tier_1_threshold == 80
     assert settings.tiering.tier_2_threshold == 50
@@ -85,15 +102,92 @@ def test_qualification_composes_rules_icp_score_tier_and_versions():
         "buying_intent": pytest.approx(42.86),
     }
     assert result.firmographic_facts["employee_count"].status == "in_range"
-    assert result.firmographic_facts["commercial_capacity"].status == "confirmed"
+    assert result.firmographic_facts["commercial_maturity"].status == "confirmed"
     assert sum(item.contribution for item in result.score_explanation) == pytest.approx(
         result.qualification.composite_score
     )
     assert result.evidence_gates["contact_channel_verified_before_outreach"]
     assert result.qualification_version == "1.0.0"
-    assert result.icp_version == "1.0.0"
+    assert result.icp_version == "1.6.0"
     assert result.scoring_version == "1.0.0"
     assert len(result.configuration_fingerprint) == 64
+
+
+def test_qualification_returns_verified_decision_maker_email_and_pain_signals():
+    account = qualified_account()
+    account["commercial_challenges"] = ["Our pipeline is unpredictable."]
+    account["verification_report"] = {
+        "company_id": "company-001",
+        "canonical_domain": "example.com",
+        "email_candidates": [
+            {
+                "full_name": "Alex Smith",
+                "email": "alex@example.com",
+                "syntax_valid": True,
+                "domain_mail_status": "mx_present",
+                "evidence_level": "observed",
+            }
+        ],
+    }
+
+    result = asyncio.run(
+        PearlLemonQualificationOrchestrator().evaluate_candidate(account)
+    )
+
+    assert result.verified_decision_maker_emails == ["alex@example.com"]
+    assert result.matched_signals["acquisition_pains"] == [
+        "unpredictable sales pipeline"
+    ]
+
+
+def test_pearl_lemon_enterprise_team_size_above_maximum_is_disqualified():
+    account = qualified_account()
+    account["employee_count"] = 5000
+
+    result = asyncio.run(
+        PearlLemonQualificationOrchestrator().evaluate_candidate(account)
+    )
+
+    assert result.qualification.status == "disqualified"
+    assert result.firmographic_facts["employee_count"].status == "out_of_range"
+    assert any(
+        check.rule_id == "R005" and check.status == "failed"
+        for check in result.deterministic_checks
+    )
+
+
+@pytest.mark.parametrize(
+    ("team_size_text", "expected_status"),
+    [
+        ("201-500", "eligible"),
+        ("251-500", "eligible"),
+        ("501-1000", "disqualified"),
+        ("251", "disqualified"),
+    ],
+)
+def test_qualification_applies_employee_range_ceiling_consistently(
+    team_size_text, expected_status
+):
+    account = qualified_account()
+    account["employee_count"] = None
+    account["team_size_text"] = team_size_text
+
+    result = asyncio.run(
+        PearlLemonQualificationOrchestrator().evaluate_candidate(account)
+    )
+
+    assert result.qualification.status == expected_status
+    assert result.firmographic_facts["employee_count"].status == (
+        "potentially_in_range"
+        if team_size_text in {"201-500", "251-500"}
+        else "out_of_range"
+        if expected_status == "disqualified"
+        else "in_range"
+    )
+    assert any(
+        check.rule_id == "R005" and check.status == "failed"
+        for check in result.deterministic_checks
+    ) is (expected_status == "disqualified")
 
 
 def test_description_keyword_does_not_disqualify_structured_b2b_company():
@@ -120,7 +214,7 @@ def test_reversed_team_size_range_is_pending_and_warned():
         PearlLemonQualificationOrchestrator().evaluate_candidate(account)
     )
 
-    assert result.qualification.status == "eligible"
+    assert result.qualification.status == "pending"
     assert any("Inverted team-size" in w for w in result.input_warnings)
     assert result.firmographic_facts["employee_count"].status == "unknown"
     assert "Inverted team-size range was treated as unknown" in result.input_warnings
@@ -209,6 +303,7 @@ def test_custom_scoring_keywords_are_rejected_as_unsupported():
 
 def test_score_explanation_includes_source_and_excerpt():
     account = qualified_account()
+    account["primary_industry"] = account["industry"]
     account["industry_evidence"] = [
         {
             "source_url": "https://example.com/about",
@@ -364,6 +459,7 @@ def test_disqualified_company_keeps_commercial_score_and_score_based_tier():
 
     assert result.qualification.status == "disqualified"
     assert result.qualification.composite_score >= 80
+    assert result.business_model == "b2b"
     assert result.qualification.tier == "tier_1"
     assert result.qualification.outreach_readiness == "blocked"
     assert "excluded_industry" in result.disqualification_reasons
@@ -371,7 +467,8 @@ def test_disqualified_company_keeps_commercial_score_and_score_based_tier():
 
 def test_missing_evidence_is_pending_without_suppressing_commercial_score():
     account = qualified_account()
-    account.pop("website_evidence_available")
+    account.pop("website_evidence")
+    account.pop("crawl_result")
 
     result = asyncio.run(
         PearlLemonQualificationOrchestrator().evaluate_candidate(account)
@@ -393,13 +490,13 @@ def test_explicit_unresolved_identity_is_not_overridden_by_name_and_domain():
 
     assert result.qualification.status == "pending"
     assert not result.evidence_gates["company_identity_resolved"]
-    assert result.firmographic_facts["commercial_capacity"].status == "confirmed"
+    assert result.firmographic_facts["commercial_maturity"].status == "confirmed"
 
 
 @pytest.mark.parametrize(
     ("weight_fit", "weight_service", "weight_intent", "changes", "expected_tier"),
     [
-        (1.0, 0.0, 0.0, {"commercial_capacity": None}, "tier_1"),
+        (1.0, 0.0, 0.0, {}, "tier_1"),
         (0.0, 1.0, 0.0, {}, "tier_2"),
     ],
 )
@@ -411,7 +508,13 @@ def test_tier_boundaries_include_exactly_80_and_50(
     expected_tier,
 ):
     account = qualified_account()
-    account.pop("commercial_capacity")
+    for key in (
+        "proven_offer",
+        "has_internal_sales_team",
+        "has_acquisition_budget",
+        "has_existing_sales_pipeline",
+    ):
+        account.pop(key)
     account.update(changes)
     settings = PearlLemonQualificationSettings(
         scoring=ScorerConfig(
@@ -429,7 +532,10 @@ def test_tier_boundaries_include_exactly_80_and_50(
     assert result.qualification.composite_score == expected_score
     assert result.qualification.tier == expected_tier
     if weight_fit == 1.0:
-        assert result.firmographic_facts["commercial_capacity"].status == "unknown"
+        assert result.firmographic_facts["commercial_maturity"].status == "unknown"
+        assert result.firmographic_facts["sales_infrastructure"].status == "unknown"
+        assert result.firmographic_facts["acquisition_capacity"].status == "unknown"
+        assert result.firmographic_facts["existing_sales_pipeline"].status == "unknown"
 
 
 def test_empty_and_malformed_enrichment_data_returns_pending_not_an_exception():
@@ -462,10 +568,10 @@ def test_empty_and_malformed_enrichment_data_returns_pending_not_an_exception():
 
     assert empty.qualification.status == "pending"
     assert empty.qualification.tier == "tier_3"
-    assert malformed.qualification.status == "eligible"
+    assert malformed.qualification.status == "pending"
     assert any("Malformed team-size" in w for w in malformed.input_warnings)
     assert malformed.input_warnings == ["Malformed team-size data was ignored"]
-    assert huge_integer.qualification.status == "eligible"
+    assert huge_integer.qualification.status == "pending"
     assert huge_integer.input_warnings == [
         "Out-of-range numeric team-size data was ignored"
     ]

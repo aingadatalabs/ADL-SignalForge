@@ -174,7 +174,17 @@ def test_enrichment_uses_icp_web_and_hunter_evidence_and_persists(tmp_path):
     record = enriched[0]
     assert record["company_identity_resolved"] is True
     assert record["website_evidence_available"] is True
-    assert record["business_model"] == "B2B"
+    assert record["business_activity_evidence"].startswith(
+        "Acme is a B2B SaaS company"
+    )
+    assert record["business_activity_source_url"] == "https://example.com/careers"
+    assert record["business_activity_source_type"] == "website_crawl"
+    assert "hiring sales development representatives" not in record[
+        "business_activity_evidence"
+    ]
+    assert "business_model" not in record
+    assert "primary_industry" not in record
+    assert "industry" not in record
     assert record["employee_count"] == 42
     assert record["country"] == "London, United Kingdom"
     assert "HubSpot" in record["technologies"]
@@ -191,6 +201,94 @@ def test_enrichment_uses_icp_web_and_hunter_evidence_and_persists(tmp_path):
     output_path = tmp_path / "enrichment_engine" / "enriched_records.jsonl"
     assert json.loads(output_path.read_text(encoding="utf-8")) == record
     assert "test-key-only" not in output_path.read_text(encoding="utf-8")
+
+
+def test_enrichment_does_not_infer_primary_industry_from_web_copy():
+    engine = PearlLemonEnrichmentEngine(
+        hunter_api_key="test-key-only",
+        frankensurf_client=FakeFrankensurf(),
+    )
+    record = {
+        "industry": ["E-commerce"],
+        "industry_evidence": [
+            {
+                "source_url": "https://example.com/about",
+                "text": "Daktela provides contact-centre software for e-commerce.",
+            }
+        ],
+    }
+
+    engine._apply_web_evidence(
+        record,
+        [],
+        [
+            {
+                "url": "https://example.com/about",
+                "cleaned_text": (
+                    "Daktela provides contact-centre software for e-commerce."
+                ),
+            }
+        ],
+    )
+
+    assert "industry" not in record
+    assert "primary_industry" not in record
+
+
+def test_enrichment_uses_only_a_verified_company_description_for_business_model():
+    engine = PearlLemonEnrichmentEngine(
+        hunter_api_key="test-key-only",
+        frankensurf_client=FakeFrankensurf(),
+    )
+    record = {
+        "canonical_domain": "example.com",
+        "description": "We are a B2B SaaS company serving business customers.",
+        "source_url": "https://example.com/about",
+    }
+
+    engine._apply_web_evidence(
+        record,
+        [],
+        [
+            {
+                "url": "https://example.com/blog",
+                "cleaned_text": (
+                    "This article discusses enterprise partnerships and "
+                    "invites readers to request a demo."
+                ),
+            }
+        ],
+    )
+
+    assert record["business_model"] == "b2b"
+    assert record["business_model_evidence"]["source_type"] == (
+        "verified_company_description"
+    )
+
+
+def test_enrichment_does_not_infer_business_model_from_offsite_description():
+    engine = PearlLemonEnrichmentEngine(
+        hunter_api_key="test-key-only",
+        frankensurf_client=FakeFrankensurf(),
+    )
+    record = {
+        "canonical_domain": "example.com",
+        "description": "We sell to businesses.",
+        "source_url": "https://directory.example/companies/example",
+    }
+
+    engine._apply_web_evidence(
+        record,
+        [],
+        [
+            {
+                "url": "https://example.com/about",
+                "cleaned_text": "The company serves multiple customer segments.",
+            }
+        ],
+    )
+
+    assert "business_model" not in record
 
 
 def test_hunter_client_retries_rate_limited_requests():
