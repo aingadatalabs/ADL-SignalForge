@@ -8,3 +8,4 @@
 .venv/
 __pycache__/
 *.py[cod]
+yc_gtm_engine/storage/proxies.txt
